@@ -17,7 +17,8 @@ def remove_depth(clip):
     path.write_text(json.dumps(metadata))
 
 
-def test_rgb_only_training_and_rollout_without_future_truth(tmp_path):
+@pytest.mark.parametrize(("image_size", "patch_size"), [(16, 2), (15, 3)])
+def test_rgb_only_training_and_rollout_without_future_truth(tmp_path, image_size, patch_size):
     from open_atlas.train import train
     from open_atlas.sample import generate
 
@@ -25,19 +26,19 @@ def test_rgb_only_training_and_rollout_without_future_truth(tmp_path):
     root.mkdir()
     clip = write_clip(root, count=4)
     remove_depth(clip)
-    checkpoint = train(root, tmp_path / "run", steps=2, image_size=16, patch_size=2, dim=32, layers=1,
+    checkpoint = train(root, tmp_path / "run", steps=2, image_size=image_size, patch_size=patch_size, dim=32, layers=1,
                        batch_size=2, context_frames=2, seed=7)
     saved = torch.load(checkpoint, weights_only=True)
-    assert saved["step"] == 2 and saved["image_size"] == 16
+    assert saved["step"] == 2 and saved["image_size"] == image_size
     assert saved["prediction"] == "next_rgb" and saved["camera_frame"] == "first_reference"
     assert saved["format_version"] == 3 and saved["representation"] == "rgb_pixels"
-    assert "codec" not in saved and saved["config"]["image_size"] == 16
+    assert "codec" not in saved and saved["config"]["image_size"] == image_size
     assert saved["model"]["patch.weight"].shape[1] == 9  # RGB + six camera-ray channels
     output = tmp_path / "generated"
     generate(checkpoint, clip / "transforms.json", output, steps=2, seed=3)
     with np.load(output / "rgb.npz", allow_pickle=False) as predictions:
         first = predictions["rgb"].copy()
-        assert first.shape == (3, 16, 16, 3) and set(predictions.files) == {"rgb", "c2w", "K"}
+        assert first.shape == (3, image_size, image_size, 3) and set(predictions.files) == {"rgb", "c2w", "K"}
     assert not (output / "depth").exists() and not (output / "points.ply").exists()
     for i in range(1, 4):
         (clip / f"{i}.png").unlink()

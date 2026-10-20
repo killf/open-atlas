@@ -72,8 +72,10 @@ def generate(checkpoint, trajectory, output, steps=20, seed=0, reference_frames=
                   checkpoint=str(checkpoint), seed=seed, sampling_steps=steps, prediction="next_rgb",
                   camera_condition_frame="first_reference", frames=predicted_frames)
     (output / "transforms.json").write_text(json.dumps(result, indent=2) + "\n")
+    # yuv420p 要求偶数尺寸；仅为预览补边，原始 RGB 与相机参数保持不变。
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-framerate", str(metadata.get("fps", 12)),
-                    "-i", str(output / "rgb/%06d.png"), "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                    "-i", str(output / "rgb/%06d.png"), "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p",
                     str(output / "preview.mp4")], check=True)
     print(f"Generated {len(colors)} RGB frames at {output}", flush=True)
     return output
