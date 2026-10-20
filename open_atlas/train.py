@@ -1,4 +1,4 @@
-"""Train RGB-conditioned video and depth generation with rectified flow."""
+"""Train next-frame RGB pixel generation without an image codec or depth supervision."""
 
 import argparse
 from dataclasses import asdict
@@ -12,25 +12,26 @@ from .data import TrajectoryDataset
 from .model import AtlasConfig, AtlasMini, flow_loss
 
 
-def train(data, output, steps=1000, image_size=32, patch_size=4, dim=128, layers=4, heads=4,
-          batch_size=4, context_frames=2, max_depth=10., lr=3e-4, seed=0, device="cpu", threads=2,
+def train(data, output, steps=1000, image_size=64, patch_size=4, dim=128, layers=4, heads=4,
+          batch_size=4, context_frames=2, lr=3e-4, seed=0, device="cpu", threads=2,
           validate=False):
-    if steps < 1 or batch_size < 1 or lr <= 0:
-        raise ValueError("Steps, batch size and learning rate must be positive")
+    if steps < 1 or batch_size < 1 or lr <= 0 or image_size < 1:
+        raise ValueError("Need positive steps, batch size, learning rate and image size")
+    output = Path(output)
+    if (output / "metrics.jsonl").exists() or (output / "last.pt").exists():
+        raise ValueError("Choose a fresh training directory")
+    output.mkdir(parents=True, exist_ok=True)
     torch.set_num_threads(threads)
     torch.manual_seed(seed)
-    output = Path(output)
-    output.mkdir(parents=True, exist_ok=True)
     device = torch.device(device)
-    dataset = TrajectoryDataset(data, image_size=image_size, context_frames=context_frames, max_depth=max_depth)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0)
-    validation = (TrajectoryDataset(data, split="val", image_size=image_size,
-                                    context_frames=context_frames, max_depth=max_depth) if validate else None)
+    dataset = TrajectoryDataset(data, image_size=image_size, context_frames=context_frames)
+    validation = TrajectoryDataset(data, split="val", image_size=image_size, context_frames=context_frames) if validate else None
     config = AtlasConfig(image_size, patch_size, dim, layers, heads)
     model = AtlasMini(config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     count = sum(p.numel() for p in model.parameters())
-    print(f"Training {count:,} parameters on {len(dataset)} target frames; context=RGB; output=RGBD; device={device}", flush=True)
+    print(f"Training {count:,} parameters on {len(dataset)} next-RGB targets; device={device}", flush=True)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0)
     iterator = iter(loader)
     with (output / "metrics.jsonl").open("w") as log:
         for step in range(1, steps + 1):
@@ -52,22 +53,26 @@ def train(data, output, steps=1000, image_size=32, patch_size=4, dim=128, layers
             if step == 1 or step % 20 == 0 or step == steps:
                 if validation is not None:
                     model.eval()
-                    losses = []
+                    total, samples = 0., 0
                     devices = [device.index or 0] if device.type == "cuda" else []
-                    # 验证使用固定噪声，并在结束后恢复训练的随机数状态。
+                    # 固定验证噪声，恢复随机数状态以免改变后续训练序列。
                     with torch.no_grad(), torch.random.fork_rng(devices=devices):
                         torch.manual_seed(12345)
-                        for val_batch in DataLoader(validation, batch_size=batch_size):
-                            losses.append(flow_loss(model, {k: v.to(device) for k, v in val_batch.items()}).item())
-                    record["val_flow_loss"] = sum(losses) / len(losses)
+                        for values in DataLoader(validation, batch_size=batch_size):
+                            size = values["target"].shape[0]
+                            total += flow_loss(model, {k: v.to(device) for k, v in values.items()}).item() * size
+                            samples += size
+                    record["val_flow_loss"] = total / samples
                 print(json.dumps(record), flush=True)
             log.write(json.dumps(record) + "\n")
             log.flush()
     checkpoint = output / "last.pt"
-    torch.save({"config": asdict(config), "model": model.state_dict(), "step": steps,
-                "context_modality": "rgb", "output_modality": "rgbd",
-                "context_frames": context_frames, "max_depth": max_depth, "seed": seed,
-                "parameters": count, "training_samples": len(dataset)}, checkpoint)
+    torch.save({"format_version": 4, "prediction": "next_rgb", "representation": "rgb_pixels",
+                "parameterization": "clean_rgb",
+                "time_sampling": "uniform",
+                "camera_frame": "first_reference", "config": asdict(config), "model": model.state_dict(),
+                "image_size": image_size, "step": steps, "context_frames": context_frames,
+                "seed": seed, "parameters": count, "training_samples": len(dataset)}, checkpoint)
     return checkpoint
 
 
@@ -75,22 +80,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=Path("runs/open-atlas"))
-    parser.add_argument("--steps", type=int, default=1000)
-    parser.add_argument("--image-size", type=int, default=32)
-    parser.add_argument("--patch-size", type=int, default=4)
-    parser.add_argument("--dim", type=int, default=128)
-    parser.add_argument("--layers", type=int, default=4)
-    parser.add_argument("--heads", type=int, default=4)
-    parser.add_argument("--batch-size", type=int, default=4)
-    parser.add_argument("--context-frames", type=int, default=2)
-    parser.add_argument("--max-depth", type=float, default=10.)
+    for name, default in [("steps", 1000), ("image-size", 64), ("patch-size", 4), ("dim", 128),
+                          ("layers", 4), ("heads", 4), ("batch-size", 4), ("context-frames", 2), ("seed", 0), ("threads", 2)]:
+        parser.add_argument(f"--{name}", type=int, default=default)
     parser.add_argument("--lr", type=float, default=3e-4)
-    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
-    parser.add_argument("--threads", type=int, default=2)
-    parser.add_argument("--validate", action="store_true", help="Evaluate a separate scene-disjoint val split")
-    args = parser.parse_args()
-    print(f"Saved {train(**vars(args))}")
+    parser.add_argument("--validate", action="store_true")
+    print(f"Saved {train(**vars(parser.parse_args()))}")
 
 
 if __name__ == "__main__":

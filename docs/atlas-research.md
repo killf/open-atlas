@@ -1,10 +1,12 @@
 # Atlas 相关论文与三维训练数据方案
 
-更新日期：2026 年 10 月 20 日。
+更新日期：2026 年 10 月 20 日。新增核对见 [一手资料与实现边界](atlas-source-audit.md)，包含官方 Beta API、RTFM、相关原论文与固定版本作者代码。
+
+当前任务已限定为 RGB 下一帧像素空间预测，不使用图像编码器或 VAE；深度不参与训练、输入或输出。像素空间是简化实验，与 Atlas 官方潜空间机制不同。下文几何生成与深度监督方案属于此前研究记录，当前已采用干净 RGB 预测参数化，具体实现与单轨迹过拟合见 [模型说明](rgb-image-overfit.md)。
 
 本项目面向 World Labs 的 Atlas 空间世界模型开展小规模开放复现实验。训练数据采用可渲染的三维资产：从多个数据源抽取小子集，设计相机轨迹，渲染连续视频，并同步保存逐帧相机参数和几何标注。第一阶段聚焦相机条件下的新视角生成及三维一致性。
 
-当前已选用 Replica 作为主数据源，完成官方场景网格下载、轨迹 RGBD 渲染及精简模型实现。下列其他数据源保留为前期调研备选；实际命令与范围以 [README](../README.md) 和 [验证记录](validation.md) 为准。
+当前已选用 Replica 作为主数据源，完成官方场景网格下载、RGB 轨迹渲染及精简模型实现。下列其他数据源保留为前期调研备选；实际命令与范围以 [README](../README.md) 和 [验证记录](validation.md) 为准。
 
 ## Atlas 官方技术资料与复现范围
 
@@ -12,12 +14,19 @@
 
 官方披露的核心是多模态自回归扩散 Transformer：图像、文本、相机位姿和深度组成空间上下文，以 rectified flow 生成连续输出。目标能力包括相机控制生成、空间重建、时空模拟，并可输出点云或 Gaussian splats。
 
-“支持深度模态”并不要求用户提供 RGBD 视频。官方在 Explicit 3D Outputs 部分说明，可从普通视频预测每帧深度并重建三维场景；相机控制与重建评测使用图像和相机位姿。输入所需模态与训练监督应区分：官方没有披露只用 RGB 训练的完整配方。本项目输入采用 RGB 参考帧和已知相机参数，合成深度仅作目标监督和评测标注，预测深度作为输出。
+“支持深度模态”并不要求用户提供 RGBD 视频。官方在 Explicit 3D Outputs 部分说明，可从普通视频预测每帧深度并重建三维场景；相机控制与重建评测使用图像和相机位姿。输入所需模态与训练监督应区分：官方没有披露只用 RGB 训练的完整配方。本项目当前只训练 RGB 下一帧，相机参数（包含目标相机）作为条件，深度不参与训练或输出。此前 RGBD 方案仅为历史记录。
 
-截至本次检索，尚未找到能够据以完整重现实验的独立 Atlas 论文和公开训练实现。官方文章没有给出完整的网络配置、训练数据配方、损失权重或检查点。因此，本项目应标为基于公开思路的缩小版实现；下列论文是可借鉴的方法，不能据此断言 Atlas 采用了它们的具体实现。
+截至本次检索，尚未找到能够据以完整重现实验的独立 Atlas 论文和公开训练实现。官方文章没有给出完整的网络配置、训练数据配方、损失权重或检查点。本次已找到官方 Beta API 文档，但服务接口不等于公开训练实现。因此，本项目应标为基于公开思路的缩小版实现；下列论文是可借鉴的方法，不能据此断言 Atlas 采用了它们的具体实现。
 
-需要区分两个名称相近的项目：
+官方补充来源：
 
+- [RTFM: A Real-Time Frame Model](https://www.worldlabs.ai/blog/rtfm)，2025-10-16：按目标位姿查询下一帧，使用带位姿历史视图作为空间记忆；这是前代工作，不能直接作为 Atlas 具体实现。
+- [How to use Atlas](https://atlas-beta.worldlabs.ai/docs/how-to-use-atlas) 与 [atlasGenerate API](https://atlas-beta.worldlabs.ai/docs/api-reference/atlas-generate)：明确由调用方提供目标相机。当前接口要求 RGBD 上下文，但文档区分消费深度与不消费深度的模型路由；接口字段不能用于推断预训练监督。
+- [Images to posed RGBD](https://atlas-beta.worldlabs.ai/docs/images-to-posed-images)：普通图像先估计相机和深度的产品前端。当前项目没有实现该前端。
+
+需要区分名称相近的项目：
+
+- Magic Leap 的 [Atlas: End-to-End 3D Scene Reconstruction from Posed Images](https://arxiv.org/abs/2003.10432) 是 2020 年的三维重建工作，不是 World Labs Atlas。
 - Meta 的 [Atlas 检索增强语言模型](https://arxiv.org/abs/2208.03299)研究少样本语言任务，与本项目目标不同。
 - 李飞飞参与的 [Repurposing 2D Diffusion Models with Gaussian Atlas for 3D Generation](https://arxiv.org/abs/2503.15877)，ICCV 2025，研究用二维网格组织三维高斯并复用二维扩散模型。可作为三维生成补充阅读，不能当作 World Labs Atlas 的模型论文。
 
@@ -114,6 +123,16 @@ Klaus Greff 等，2022；CVPR 2022。 [论文](https://arxiv.org/abs/2203.03570)
 结合 Blender 与物理模拟生成带丰富标注的合成数据。适合后续加入运动物体、遮挡、深度和实例标注。静态轨迹实验可先使用 Blender，动态物理数据再参考 Kubric。
 
 补充工具资料：[BlenderProc2: A Procedural Pipeline for Photorealistic Rendering](https://joss.theoj.org/papers/10.21105/joss.04901)（[本地 PDF](papers/blenderproc2-joss.04901.pdf)）及[官方实现](https://github.com/DLR-RM/BlenderProc)，用于参考 RGB、几何标注与相机采样的工程流程。
+
+### 新增补充：多模态与像素空间参数化
+
+**14. Modality Forcing for Scalable Spatial Generation**
+
+Bardienus Pieter Duisterhof 等，2026。[论文全文](https://arxiv.org/html/2606.13676v1) · [论文页面](https://arxiv.org/abs/2606.13676)。通过分模态噪声与解码器，将 T2I 模型后训练为联合 RGB／深度生成器，使用深度数据。它有相关作者，仍是独立工作，不能当作 Atlas 的完整配方或只用 RGB 训练的证明。本次在线阅读，未下载新 PDF。
+
+**15. Back to Basics: Let Denoising Generative Models Denoise（JiT）**
+
+Tianhong Li、Kaiming He，2025。[论文全文](https://arxiv.org/html/2511.13720v1) · [作者代码](https://github.com/LTH14/JiT)。论文区分网络直接预测的量与损失／采样所在空间：干净图像预测也可以转换成速度后做流匹配。它与当前去掉 VAE 的像素版有关，提示应单独验证预测参数化，而非仅凭 RF 公式成立就认定速度输出适合当前小模型。它不是 Atlas 的结构说明，也不能用其大 patch 实验直接认定本地代码根因。本次在线阅读，未下载新 PDF。
 
 ## 小型三维数据源选型
 

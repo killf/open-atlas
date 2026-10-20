@@ -65,16 +65,17 @@ def render(args, mesh_path):
     center = (mesh_data["vertices"].min(0) + mesh_data["vertices"].max(0)) / 2
     eye = (transform @ np.array([*args.position, 1]))[:3] if args.position else center
     focus = (transform @ np.array([*args.target, 1]))[:3] if args.target else eye + np.array([0, 1, 0])
-    scene.view_layers[0].use_pass_z = True
-    scene.use_nodes = True
-    nodes = scene.node_tree.nodes
-    nodes.clear()
-    layers = nodes.new("CompositorNodeRLayers")
-    depth_output = nodes.new("CompositorNodeOutputFile")
-    depth_output.format.file_format = "OPEN_EXR"
-    depth_output.format.color_depth = "32"
-    depth_output.file_slots[0].path = "z_"
-    scene.node_tree.links.new(layers.outputs["Depth"], depth_output.inputs[0])
+    if args.depth:
+        scene.view_layers[0].use_pass_z = True
+        scene.use_nodes = True
+        nodes = scene.node_tree.nodes
+        nodes.clear()
+        layers = nodes.new("CompositorNodeRLayers")
+        depth_output = nodes.new("CompositorNodeOutputFile")
+        depth_output.format.file_format = "OPEN_EXR"
+        depth_output.format.color_depth = "32"
+        depth_output.file_slots[0].path = "z_"
+        scene.node_tree.links.new(layers.outputs["Depth"], depth_output.inputs[0])
     scene_id = args.scene.name if args.scene.is_dir() else args.scene.parent.name
 
     for kind in args.trajectories:
@@ -83,10 +84,11 @@ def render(args, mesh_path):
             if directory.exists():
                 raise ValueError(f"Output already exists: {directory}; choose a fresh output directory")
             (directory / "rgb").mkdir(parents=True)
-            (directory / "depth").mkdir()
-            temporary = directory / ".depth_exr"
-            temporary.mkdir()
-            depth_output.base_path = str(temporary.resolve())
+            if args.depth:
+                (directory / "depth").mkdir()
+                temporary = directory / ".depth_exr"
+                temporary.mkdir()
+                depth_output.base_path = str(temporary.resolve())
             poses = trajectory(eye, focus, kind, args.frames, args.amplitude, seed)
             frames = []
             for index, pose in enumerate(poses):
@@ -96,25 +98,31 @@ def render(args, mesh_path):
                 rgb_path = directory / "rgb" / f"{index:06d}.png"
                 scene.render.filepath = str(rgb_path.resolve())
                 bpy.ops.render.render(write_still=True)
-                depth_file = next(temporary.glob("*.exr"))
-                image = bpy.data.images.load(str(depth_file.resolve()), check_existing=False)
-                # EXR 像素自下而上；翻转后与 PNG 对齐，Z pass 已是相机 Z 深度。
-                z = np.array(image.pixels[:], dtype=np.float32).reshape(args.size, args.size, 4)[::-1, :, 0].copy()
-                bpy.data.images.remove(image)
-                depth_file.unlink()
-                z[~np.isfinite(z) | (z <= 0) | (z > camera.clip_end)] = 0
-                np.save(directory / "depth" / f"{index:06d}.npy", z)
-                frames.append({"frame_id": index, "timestamp": index / args.fps,
-                               "rgb": f"rgb/{index:06d}.png", "depth": f"depth/{index:06d}.npy",
-                               "c2w": pose.tolist(), "w2c": np.linalg.inv(pose).tolist()})
-            temporary.rmdir()
+                if args.depth:
+                    depth_file = next(temporary.glob("*.exr"))
+                    image = bpy.data.images.load(str(depth_file.resolve()), check_existing=False)
+                    # EXR 像素自下而上；翻转后与 PNG 对齐，Z pass 已是相机 Z 深度。
+                    z = np.array(image.pixels[:], dtype=np.float32).reshape(args.size, args.size, 4)[::-1, :, 0].copy()
+                    bpy.data.images.remove(image)
+                    depth_file.unlink()
+                    z[~np.isfinite(z) | (z <= 0) | (z > camera.clip_end)] = 0
+                    np.save(directory / "depth" / f"{index:06d}.npy", z)
+                frame = {"frame_id": index, "timestamp": index / args.fps,
+                         "rgb": f"rgb/{index:06d}.png", "c2w": pose.tolist(),
+                         "w2c": np.linalg.inv(pose).tolist()}
+                if args.depth:
+                    frame["depth"] = f"depth/{index:06d}.npy"
+                frames.append(frame)
+            if args.depth:
+                temporary.rmdir()
             metadata = {"scene_id": scene_id, "split": args.split, "trajectory": kind, "seed": seed,
                         "appearance": "vertex_color", "voxel_size": args.voxel_size,
                         "blender_version": bpy.app.version_string,
                         "camera_convention": "OpenCV: right, down, forward; pixel centers (x+.5,y+.5)",
-                        "depth_convention": "camera_z; normalized world units; 0 means invalid",
                         "world_from_raw": transform.tolist(), "width": args.size, "height": args.size,
                         "fps": args.fps, "K": K.tolist(), "frames": frames}
+            if args.depth:
+                metadata["depth_convention"] = "camera_z; normalized world units; 0 means invalid"
             (directory / "transforms.json").write_text(json.dumps(metadata, indent=2) + "\n")
             subprocess.run(["ffmpeg", "-v", "error", "-y", "-framerate", str(args.fps),
                             "-i", str(directory / "rgb/%06d.png"), "-c:v", "libx264",
@@ -128,6 +136,7 @@ def main():
     parser.add_argument("--output", type=Path, default=Path("data/rendered/replica"))
     parser.add_argument("--trajectories", nargs="+", choices=["orbit", "dolly", "truck", "crane", "pan", "compound"],
                         default=["orbit", "dolly", "truck", "crane", "pan", "compound"])
+    parser.add_argument("--depth", action="store_true", help="Optional analysis sidecar; unused by RGB training")
     parser.add_argument("--frames", type=int, default=48)
     parser.add_argument("--size", type=int, default=64)
     parser.add_argument("--fps", type=int, default=12)

@@ -1,0 +1,203 @@
+{
+  "experiment": "rgb-pixel-next-frame-v1",
+  "recorded_at": "2026-10-20T11:56:06.378383+00:00",
+  "training_code_commit": "e978fb0eacf2414f59ce0c0be8ad62f8c75d7a6c",
+  "evaluation_code_commit": "e1c2101c6b01f60f1d5335a9b02cda0d174b0807",
+  "task": {
+    "target": "next RGB frame directly in pixel space",
+    "inputs": [
+      "past RGB",
+      "relative cameras",
+      "video time gaps"
+    ],
+    "depth_used": false,
+    "codec_used": false,
+    "pretrained_weights_used": false
+  },
+  "dataset": {
+    "path": "data/rendered/replica_rgb_v2",
+    "manifest_sha256": "5cb875ff75967520f224b8b32854a9b45ac926a4564536598a6ff9dcaccf4947",
+    "verified_rgb_frames": 1392,
+    "summary": {
+      "test": {
+        "scenes": [
+          "apartment_2"
+        ],
+        "clips": 6,
+        "rgb_frames": 144,
+        "targets": 138
+      },
+      "train": {
+        "scenes": [
+          "apartment_0"
+        ],
+        "clips": 48,
+        "rgb_frames": 1152,
+        "targets": 1104
+      },
+      "val": {
+        "scenes": [
+          "apartment_1"
+        ],
+        "clips": 6,
+        "rgb_frames": 96,
+        "targets": 90
+      }
+    },
+    "source_rgb_unchanged": true
+  },
+  "training": {
+    "command": [
+      "python",
+      "-u",
+      "-m",
+      "open_atlas.train",
+      "--data",
+      "data/rendered/replica_rgb_v2",
+      "--output",
+      "runs/rgb-pixel-next-frame-v1",
+      "--steps",
+      "1000",
+      "--image-size",
+      "64",
+      "--patch-size",
+      "4",
+      "--dim",
+      "128",
+      "--layers",
+      "4",
+      "--heads",
+      "4",
+      "--batch-size",
+      "4",
+      "--context-frames",
+      "2",
+      "--lr",
+      "0.0003",
+      "--seed",
+      "42",
+      "--device",
+      "cpu",
+      "--threads",
+      "2",
+      "--validate"
+    ],
+    "config": {
+      "image_size": 64,
+      "patch_size": 4,
+      "dim": 128,
+      "layers": 4,
+      "heads": 4
+    },
+    "steps": 1000,
+    "parameters": 1327920,
+    "context_frames": 2,
+    "training_samples": 1104,
+    "checkpoint": "runs/rgb-pixel-next-frame-v1/last.pt",
+    "checkpoint_sha256": "73e18c5ebbedae981ff88badbf1f46aec2dc6bc6a7fa4635db09331323ab0bd4",
+    "format_version": 3,
+    "first20_mean_flow_loss": 1.2194971084594726,
+    "last20_mean_flow_loss": 0.10352689772844315,
+    "last_validation_flow_loss": 0.1185685901178254
+  },
+  "evaluation_command": [
+    "python",
+    "-m",
+    "open_atlas.evaluate",
+    "--checkpoint",
+    "runs/rgb-pixel-next-frame-v1/last.pt",
+    "--data",
+    "data/rendered/replica_rgb_v2",
+    "--output",
+    "outputs/rgb-pixel-next-frame-v1-eval",
+    "--split",
+    "test",
+    "--steps",
+    "20",
+    "--metric-size",
+    "32",
+    "--seed",
+    "0",
+    "--device",
+    "cpu"
+  ],
+  "evaluation": {
+    "checkpoint": "runs/rgb-pixel-next-frame-v1/last.pt",
+    "split": "test",
+    "test_clips": 6,
+    "generated_frames": 138,
+    "metric_size": 32,
+    "sampling_steps": 20,
+    "seed": 0,
+    "protocol": "one reference RGB, known cameras, free autoregressive rollout; no depth loaded",
+    "rgb_psnr": 11.842032840194188,
+    "rgb_mae": 0.19546366969191056,
+    "copy_first_rgb_psnr": 17.001345122966946,
+    "per_clip": [
+      {
+        "clip": "test/apartment_2_compound_200",
+        "generated_frames": 23,
+        "rgb_psnr": 11.837606355748003,
+        "rgb_mae": 0.19618466272378518,
+        "copy_first_rgb_psnr": 21.36193454441417
+      },
+      {
+        "clip": "test/apartment_2_crane_200",
+        "generated_frames": 23,
+        "rgb_psnr": 11.876660498950773,
+        "rgb_mae": 0.19498453706663824,
+        "copy_first_rgb_psnr": 16.529503774821617
+      },
+      {
+        "clip": "test/apartment_2_dolly_200",
+        "generated_frames": 23,
+        "rgb_psnr": 11.75075978429769,
+        "rgb_mae": 0.19630621270247228,
+        "copy_first_rgb_psnr": 17.906725839222666
+      },
+      {
+        "clip": "test/apartment_2_orbit_200",
+        "generated_frames": 23,
+        "rgb_psnr": 11.873437683350874,
+        "rgb_mae": 0.19529895744529693,
+        "copy_first_rgb_psnr": 21.81485624174565
+      },
+      {
+        "clip": "test/apartment_2_pan_200",
+        "generated_frames": 23,
+        "rgb_psnr": 11.82431139264864,
+        "rgb_mae": 0.19522708200127872,
+        "copy_first_rgb_psnr": 14.020767742258805
+      },
+      {
+        "clip": "test/apartment_2_truck_200",
+        "generated_frames": 23,
+        "rgb_psnr": 11.890951087500374,
+        "rgb_mae": 0.19478056621199205,
+        "copy_first_rgb_psnr": 15.569449483504362
+      }
+    ]
+  },
+  "historical_comparison": {
+    "latent_experiment": "rgb-next-frame-v1",
+    "latent_rgb_psnr_at_32": 11.36955648149537,
+    "latent_rgb_mae": 0.2072903623632424,
+    "latent_steps": 1000,
+    "same_dataset_and_backbone_width_depth": true,
+    "matched_training_steps": true,
+    "matched_compute": false,
+    "pixel_tokens_per_frame": 256,
+    "latent_tokens_per_frame": 64,
+    "note": "Representations, pretrained codec, input/output projections, token count and parameter count differ; this is not a compute-matched ablation."
+  },
+  "tests": {
+    "command": "python -m pytest -q",
+    "passed": 27,
+    "independent_code_review": "No remaining actionable issues; odd-size preview regression fixed."
+  },
+  "limitations": [
+    "One training scene and one held-out test scene.",
+    "Pixel-space simplification differs from official Atlas latent-space design.",
+    "Known camera parameters required; no depth supervision or output."
+  ]
+}

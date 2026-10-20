@@ -11,7 +11,8 @@ import pytest
 
 
 @pytest.mark.skipif(not shutil.which("blender") or not shutil.which("ffmpeg"), reason="Blender and FFmpeg required")
-def test_blender_depth_is_camera_z_and_rgb_preserves_vertex_color(tmp_path):
+@pytest.mark.parametrize("with_depth", [False, True])
+def test_blender_rgb_default_and_optional_camera_z_depth(tmp_path, with_depth):
     mesh = tmp_path / "plane.npz"
     np.savez(mesh, vertices=np.array([[-10, 0, -10], [10, 0, -10], [10, 0, 10], [-10, 0, 10]]),
              faces=np.array([[0, 1, 2], [0, 2, 3]]), colors=np.tile([.25, .5, .75], (4, 1)), world_from_raw=np.eye(4))
@@ -22,13 +23,17 @@ def test_blender_depth_is_camera_z_and_rgb_preserves_vertex_color(tmp_path):
                              "--python", str(script), "--", "--worker-mesh", str(mesh), "--scene", str(scene),
                              "--output", str(tmp_path / "rendered"), "--trajectories", "pan", "--frames", "2",
                              "--size", "8", "--fov", "90", "--position", "0", "-2", "1", "--target", "0", "0", "1",
-                             "--amplitude", "0.000001"], text=True, capture_output=True)
+                             "--amplitude", "0.000001", *(["--depth"] if with_depth else [])], text=True, capture_output=True)
     assert result.returncode == 0, result.stdout + result.stderr
     metadata_path = next((tmp_path / "rendered").glob("*/transforms.json"))
     metadata = json.loads(metadata_path.read_text())
     for frame in metadata["frames"]:
-        depth = np.load(metadata_path.parent / frame["depth"])
-        np.testing.assert_allclose(depth, 2, atol=1e-5)
+        if with_depth:
+            depth = np.load(metadata_path.parent / frame["depth"])
+            np.testing.assert_allclose(depth, 2, atol=1e-5)
+        else:
+            assert "depth" not in frame
+            assert not (metadata_path.parent / "depth").exists()
         rgb = np.asarray(Image.open(metadata_path.parent / frame["rgb"]))
         np.testing.assert_allclose(rgb.mean(axis=(0, 1)), [64, 128, 191], atol=2)
         np.testing.assert_allclose(np.array(frame["c2w"]) @ np.array(frame["w2c"]), np.eye(4), atol=1e-6)

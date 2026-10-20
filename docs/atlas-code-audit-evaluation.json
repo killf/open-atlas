@@ -1,0 +1,77 @@
+{
+  "checkpoint": "/workspace/open-atlas/runs/replica-mini-v1-rgb/last.pt",
+  "checkpoint_steps": 6000,
+  "split": "test",
+  "protocol": "one true reference RGB per clip, known cameras, all later frames autoregressive; supervision loaded only after generation for scoring",
+  "sampling_steps": 20,
+  "seed": 0,
+  "depth_units": "scene normalized, longest mesh side 4; not metres",
+  "test_clips": 6,
+  "generated_frames": 138,
+  "rgb_psnr": 11.031905342326365,
+  "copy_first_rgb_psnr": 17.00134512296695,
+  "depth_abs_rel": 0.46115566502061195,
+  "depth_rmse_normalized_units": 0.7287695219202172,
+  "per_clip": [
+    {
+      "clip": "apartment_2_compound_200",
+      "generated_frames": 23,
+      "rgb_psnr": 11.013312837911442,
+      "copy_first_rgb_psnr": 21.36193454441417,
+      "depth_abs_rel": 0.45900902333644766,
+      "depth_rmse_normalized_units": 0.7267157196862751,
+      "predicted_depth_zero_fraction": 0.018597146739130436,
+      "predicted_depth_max_fraction": 0.0
+    },
+    {
+      "clip": "apartment_2_crane_200",
+      "generated_frames": 23,
+      "rgb_psnr": 10.963455753066105,
+      "copy_first_rgb_psnr": 16.529503774821617,
+      "depth_abs_rel": 0.4653632316727122,
+      "depth_rmse_normalized_units": 0.734006325140263,
+      "predicted_depth_zero_fraction": 0.019743546195652172,
+      "predicted_depth_max_fraction": 0.0
+    },
+    {
+      "clip": "apartment_2_dolly_200",
+      "generated_frames": 23,
+      "rgb_psnr": 10.906617578958326,
+      "copy_first_rgb_psnr": 17.906725839222666,
+      "depth_abs_rel": 0.4616279513051691,
+      "depth_rmse_normalized_units": 0.7290984595397583,
+      "predicted_depth_zero_fraction": 0.01936141304347826,
+      "predicted_depth_max_fraction": 0.0
+    },
+    {
+      "clip": "apartment_2_orbit_200",
+      "generated_frames": 23,
+      "rgb_psnr": 11.060583762506035,
+      "copy_first_rgb_psnr": 21.81485624174565,
+      "depth_abs_rel": 0.45828381405588753,
+      "depth_rmse_normalized_units": 0.727275954070624,
+      "predicted_depth_zero_fraction": 0.018342391304347828,
+      "predicted_depth_max_fraction": 0.0
+    },
+    {
+      "clip": "apartment_2_pan_200",
+      "generated_frames": 23,
+      "rgb_psnr": 11.115080548805498,
+      "copy_first_rgb_psnr": 14.020767742258805,
+      "depth_abs_rel": 0.46224610335719857,
+      "depth_rmse_normalized_units": 0.7292210684950743,
+      "predicted_depth_zero_fraction": 0.019276494565217392,
+      "predicted_depth_max_fraction": 0.0
+    },
+    {
+      "clip": "apartment_2_truck_200",
+      "generated_frames": 23,
+      "rgb_psnr": 11.136934100567846,
+      "copy_first_rgb_psnr": 15.569449483504362,
+      "depth_abs_rel": 0.4604357207466011,
+      "depth_rmse_normalized_units": 0.7263070874602741,
+      "predicted_depth_zero_fraction": 0.018682065217391304,
+      "predicted_depth_max_fraction": 0.0
+    }
+  ]
+}
