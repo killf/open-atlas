@@ -1,0 +1,58 @@
+{
+  "created_at_utc": "2026-10-20T09:14:55.875174+00:00",
+  "purpose": "Starter 3D assets for camera-trajectory rendering; not Atlas training data",
+  "source_repository": "https://github.com/KhronosGroup/glTF-Sample-Assets",
+  "assets": [
+    {
+      "asset_id": "khronos/Avocado",
+      "path": "data/raw/khronos/Avocado.glb",
+      "source_url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/Avocado/glTF-Binary/Avocado.glb",
+      "source_commit": "edc7c9e67c639d230715049ee31f9a96a6babbbe",
+      "bytes": 8110040,
+      "sha256": "ccc9c3ce56423720b09399c2351537207cd5a65f859f9e6e2f30922762f3abd4",
+      "license_summary": "CC0-1.0; Microsoft",
+      "attribution_path": "docs/asset-licenses/Avocado.md",
+      "status": "downloaded_glb_container_validated_not_rendered",
+      "validation": {
+        "blender_version": "4.3.2",
+        "import_success": true,
+        "mesh_objects": 1,
+        "rendered": false
+      }
+    },
+    {
+      "asset_id": "khronos/ToyCar",
+      "path": "data/raw/khronos/ToyCar.glb",
+      "source_url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/ToyCar/glTF-Binary/ToyCar.glb",
+      "source_commit": "edc7c9e67c639d230715049ee31f9a96a6babbbe",
+      "bytes": 5422412,
+      "sha256": "01a60862de55cd4b9f3acfab0b0def86451800f9c42467fcd61052c16cb9838c",
+      "license_summary": "CC0-1.0; Guido Odendahl and Eric Chadwick",
+      "attribution_path": "docs/asset-licenses/ToyCar.md",
+      "status": "downloaded_glb_container_validated_not_rendered",
+      "validation": {
+        "blender_version": "4.3.2",
+        "import_success": true,
+        "mesh_objects": 3,
+        "rendered": false
+      }
+    },
+    {
+      "asset_id": "khronos/Fox",
+      "path": "data/raw/khronos/Fox.glb",
+      "source_url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/Fox/glTF-Binary/Fox.glb",
+      "source_commit": "edc7c9e67c639d230715049ee31f9a96a6babbbe",
+      "bytes": 162852,
+      "sha256": "d97044e701822bac5a62696459b27d7b375aada5de8574ed4362edbba94771f7",
+      "license_summary": "Model CC0-1.0; rigging, animation and conversion CC-BY-4.0; see attribution",
+      "attribution_path": "docs/asset-licenses/Fox.md",
+      "status": "downloaded_glb_container_validated_not_rendered",
+      "validation": {
+        "blender_version": "4.3.2",
+        "import_success": true,
+        "mesh_objects": 2,
+        "rendered": false
+      }
+    }
+  ]
+}
