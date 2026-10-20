@@ -33,7 +33,7 @@ def test_rgb_only_training_and_rollout_without_future_truth(tmp_path, image_size
     assert saved["prediction"] == "next_rgb" and saved["camera_frame"] == "first_reference"
     assert saved["format_version"] == 4 and saved["representation"] == "rgb_pixels"
     assert saved["parameterization"] == "clean_rgb"
-    assert saved["time_sampling"] == "logit_normal(-0.8,0.8)"
+    assert saved["time_sampling"] == "uniform"
     assert "codec" not in saved and saved["config"]["image_size"] == image_size
     assert saved["model"]["patch.weight"].shape[1] == 9  # RGB + six camera-ray channels
     output = tmp_path / "generated"

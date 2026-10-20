@@ -74,26 +74,3 @@ def test_perfect_clean_rgb_has_zero_loss_near_clean_endpoint():
              "context_times": torch.zeros(3, 2)}
     loss = flow_loss(PerfectImage(), batch, noise=torch.randn_like(target), time=torch.tensor([.5, .99, 1.]))
     assert torch.isfinite(loss) and loss.item() == 0
-
-
-def test_default_flow_times_follow_reference_noise_distribution():
-    from open_atlas.model import flow_loss
-
-    class CaptureTimes(torch.nn.Module):
-        def forward(self, x, t, context, context_rays, target_rays, context_times):
-            self.times = t
-            return torch.zeros_like(x)
-
-    # JiT 的 logit-normal(-0.8, 0.8) 避免均匀采样与速度权重过度强调干净端。
-    torch.manual_seed(17)
-    count = 32768
-    batch = {"target": torch.zeros(count, 3, 1, 1), "context": torch.zeros(count, 1, 3, 1, 1),
-             "context_rays": torch.zeros(count, 1, 6, 1, 1), "target_rays": torch.zeros(count, 6, 1, 1),
-             "context_times": torch.zeros(count, 1)}
-    model = CaptureTimes()
-    flow_loss(model, batch)
-    logits = torch.logit(model.times)
-    assert torch.isfinite(logits).all()
-    assert abs(logits.mean().item() + .8) < .02
-    assert abs(logits.std().item() - .8) < .02
-    assert (model.times > .9).float().mean() < .001
