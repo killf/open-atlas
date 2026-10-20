@@ -67,7 +67,8 @@ def train(data, output, steps=1000, image_size=64, patch_size=4, dim=128, layers
             log.write(json.dumps(record) + "\n")
             log.flush()
     checkpoint = output / "last.pt"
-    torch.save({"format_version": 3, "prediction": "next_rgb", "representation": "rgb_pixels",
+    torch.save({"format_version": 4, "prediction": "next_rgb", "representation": "rgb_pixels",
+                "parameterization": "clean_rgb",
                 "camera_frame": "first_reference", "config": asdict(config), "model": model.state_dict(),
                 "image_size": image_size, "step": steps, "context_frames": context_frames,
                 "seed": seed, "parameters": count, "training_samples": len(dataset)}, checkpoint)

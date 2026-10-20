@@ -31,7 +31,8 @@ def test_rgb_only_training_and_rollout_without_future_truth(tmp_path, image_size
     saved = torch.load(checkpoint, weights_only=True)
     assert saved["step"] == 2 and saved["image_size"] == image_size
     assert saved["prediction"] == "next_rgb" and saved["camera_frame"] == "first_reference"
-    assert saved["format_version"] == 3 and saved["representation"] == "rgb_pixels"
+    assert saved["format_version"] == 4 and saved["representation"] == "rgb_pixels"
+    assert saved["parameterization"] == "clean_rgb"
     assert "codec" not in saved and saved["config"]["image_size"] == image_size
     assert saved["model"]["patch.weight"].shape[1] == 9  # RGB + six camera-ray channels
     output = tmp_path / "generated"
@@ -89,10 +90,11 @@ def test_evaluation_scores_rollout_against_copy_baseline(tmp_path):
     assert result["copy_first_rgb_psnr"] == pytest.approx(expected)
 
 
-def test_pixel_sampler_rejects_old_latent_checkpoint(tmp_path):
+@pytest.mark.parametrize("version", [2, 3])
+def test_clean_rgb_sampler_rejects_old_checkpoints(tmp_path, version):
     from open_atlas.sample import load_checkpoint
 
     checkpoint = tmp_path / "old.pt"
-    torch.save({"format_version": 2, "prediction": "next_rgb"}, checkpoint)
+    torch.save({"format_version": version, "prediction": "next_rgb", "representation": "rgb_pixels"}, checkpoint)
     with pytest.raises(ValueError, match="pixel"):
         load_checkpoint(checkpoint, "cpu")

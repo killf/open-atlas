@@ -1,20 +1,22 @@
 import torch
 
 
-def test_euler_sampling_integrates_velocity_without_intermediate_clipping():
+def test_clean_image_prediction_integrates_to_rgb():
     from open_atlas.model import sample_flow
 
-    class ConstantVelocity(torch.nn.Module):
+    class ConstantImage(torch.nn.Module):
         def forward(self, x, t, context, context_rays, target_rays, context_times):
-            return torch.ones_like(x) * 2
+            return torch.full_like(x, .7)
 
-    output = sample_flow(ConstantVelocity(), torch.zeros(1, 2, 3, 4, 4),
-                         torch.zeros(1, 2, 6, 4, 4), torch.zeros(1, 6, 4, 4),
-                         torch.tensor([[-2., -1.]]), steps=4, noise=torch.zeros(1, 3, 4, 4))
-    torch.testing.assert_close(output, torch.full_like(output, 2))
+    context = torch.zeros(1, 2, 3, 4, 4)
+    for steps in [1, 4, 20, 80]:
+        output = sample_flow(ConstantImage(), context, torch.zeros(1, 2, 6, 4, 4),
+                             torch.zeros(1, 6, 4, 4), torch.tensor([[-2., -1.]]),
+                             steps=steps, noise=torch.randn(1, 3, 4, 4))
+        torch.testing.assert_close(output, torch.full_like(output, .7))
 
 
-def test_pixel_model_learns_velocity_and_uses_camera_condition():
+def test_pixel_model_learns_clean_rgb_and_uses_camera_condition():
     from open_atlas.model import AtlasConfig, AtlasMini
 
     torch.manual_seed(3)
@@ -26,7 +28,7 @@ def test_pixel_model_learns_velocity_and_uses_camera_condition():
     target_rays = torch.randn(2, 6, 8, 8)
     context_times = torch.tensor([[-2., -1.], [-2., -1.]])
     t = torch.full((2,), .5)
-    target = torch.randn_like(x)
+    target = torch.rand_like(x)
     optimizer = torch.optim.AdamW(model.parameters(), lr=.005)
     losses = []
     for _ in range(30):
@@ -44,15 +46,31 @@ def test_pixel_model_learns_velocity_and_uses_camera_condition():
     assert not torch.allclose(before, changed)
 
 
-def test_flow_loss_supervises_only_next_rgb_frame():
+def test_flow_loss_uses_clean_rgb_prediction_with_velocity_weighting():
     from open_atlas.model import flow_loss
 
-    class ZeroVelocity(torch.nn.Module):
+    class ZeroImage(torch.nn.Module):
         def forward(self, x, t, context, context_rays, target_rays, context_times):
             return torch.zeros_like(x)
 
     batch = {"target": torch.ones(1, 3, 4, 4), "context": torch.zeros(1, 2, 3, 4, 4),
              "context_rays": torch.zeros(1, 2, 6, 4, 4), "target_rays": torch.zeros(1, 6, 4, 4),
              "context_times": torch.tensor([[-2., -1.]])}
-    loss = flow_loss(ZeroVelocity(), batch, noise=torch.zeros_like(batch["target"]), time=torch.full((1,), .5))
-    assert loss.item() == 1
+    loss = flow_loss(ZeroImage(), batch, noise=torch.zeros_like(batch["target"]), time=torch.full((1,), .5))
+    assert loss.item() == 4
+
+
+def test_perfect_clean_rgb_has_zero_loss_near_clean_endpoint():
+    from open_atlas.model import flow_loss
+
+    target = torch.rand(3, 3, 4, 4)
+
+    class PerfectImage(torch.nn.Module):
+        def forward(self, x, t, context, context_rays, target_rays, context_times):
+            return target
+
+    batch = {"target": target, "context": torch.rand(3, 2, 3, 4, 4),
+             "context_rays": torch.zeros(3, 2, 6, 4, 4), "target_rays": torch.zeros(3, 6, 4, 4),
+             "context_times": torch.zeros(3, 2)}
+    loss = flow_loss(PerfectImage(), batch, noise=torch.randn_like(target), time=torch.tensor([.5, .99, 1.]))
+    assert torch.isfinite(loss) and loss.item() == 0

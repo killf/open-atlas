@@ -15,9 +15,9 @@ from .model import AtlasConfig, AtlasMini, sample_flow
 
 def load_checkpoint(checkpoint, device):
     saved = torch.load(checkpoint, map_location="cpu", weights_only=True)
-    if (saved.get("format_version") != 3 or saved.get("prediction") != "next_rgb"
-            or saved.get("representation") != "rgb_pixels"):
-        raise ValueError("Checkpoint is not a next-RGB pixel model; retrain with the current code")
+    if (saved.get("format_version") != 4 or saved.get("prediction") != "next_rgb"
+            or saved.get("representation") != "rgb_pixels" or saved.get("parameterization") != "clean_rgb"):
+        raise ValueError("Checkpoint is not a clean-RGB pixel model; retrain with the current code")
     model = AtlasMini(AtlasConfig(**saved["config"])).to(device).eval()
     model.load_state_dict(saved["model"])
     return saved, model

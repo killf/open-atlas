@@ -36,7 +36,7 @@ class DiTBlock(nn.Module):
 
 
 class AtlasMini(nn.Module):
-    """直接预测下一帧 RGB 的流速度；patch 投影随模型训练，无独立编解码器。"""
+    """从加噪目标与历史条件预测干净 RGB；无独立图像编解码器。"""
     def __init__(self, config: AtlasConfig):
         super().__init__()
         self.config = config
@@ -54,6 +54,8 @@ class AtlasMini(nn.Module):
         self.norm = nn.LayerNorm(config.dim, elementwise_affine=False, eps=1e-6)
         self.final_condition = nn.Sequential(nn.SiLU(), nn.Linear(config.dim, config.dim * 2))
         self.output = nn.Linear(config.dim, 3 * config.patch_size**2)
+        nn.init.zeros_(self.final_condition[-1].weight)
+        nn.init.zeros_(self.final_condition[-1].bias)
         nn.init.zeros_(self.output.weight)
         nn.init.zeros_(self.output.bias)
 
@@ -89,14 +91,20 @@ class AtlasMini(nn.Module):
         return pixels.permute(0, 3, 1, 4, 2, 5).reshape_as(x)
 
 
+def flow_velocity(image, x, time):
+    """JiT 式图像预测转速度；分母下限抑制干净端点的数值放大。"""
+    return (image - x) / (1 - time[:, None, None, None]).clamp_min(.05)
+
+
 def flow_loss(model, batch, noise=None, time=None):
-    """仅监督下一帧 RGB 的速度 target - noise，不读取深度。"""
+    """网络预测干净下一帧，仅在速度空间计算 RGB 损失。"""
     target = batch["target"]
     noise = torch.randn_like(target) if noise is None else noise
     time = torch.rand(target.shape[0], device=target.device) if time is None else time
     x = (1 - time[:, None, None, None]) * noise + time[:, None, None, None] * target
-    velocity = model(x, time, batch["context"], batch["context_rays"], batch["target_rays"], batch["context_times"])
-    return (velocity - (target - noise)).square().mean()
+    prediction = model(x, time, batch["context"], batch["context_rays"], batch["target_rays"], batch["context_times"])
+    # 两端使用相同分母；即使接近 t=1，预测等于真值时损失仍为零。
+    return (flow_velocity(prediction, x, time) - flow_velocity(target, x, time)).square().mean()
 
 
 @torch.no_grad()
@@ -106,5 +114,8 @@ def sample_flow(model, context, context_rays, target_rays, context_times, steps=
     x = torch.randn_like(context[:, 0]) if noise is None else noise.clone()
     for step in range(steps):
         t = torch.full((x.shape[0],), step / steps, device=x.device)
-        x += model(x, t, context, context_rays, target_rays, context_times) / steps
-    return x
+        image = model(x, t, context, context_rays, target_rays, context_times)
+        # 最后直接取干净预测，避免高采样步数下分母保护留下噪声残差。
+        if step == steps - 1:
+            return image
+        x += flow_velocity(image, x, t) / steps
