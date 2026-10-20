@@ -1,4 +1,4 @@
-"""Generate RGBD with RGB/camera conditioning and a rectified-flow objective."""
+"""Autoregressive image-latent DiT with camera conditioning and rectified flow."""
 
 from dataclasses import dataclass
 import math
@@ -9,32 +9,51 @@ from torch import nn
 
 @dataclass
 class AtlasConfig:
-    image_size: int = 32
-    patch_size: int = 4
+    latent_size: int = 8
+    patch_size: int = 1
     dim: int = 128
     layers: int = 4
     heads: int = 4
 
 
-class AtlasMini(nn.Module):
-    """以 RGB 和相机射线为条件，每次生成一帧 RGB 及预测深度。"""
+class DiTBlock(nn.Module):
+    """DiT 风格 adaLN-Zero；条件控制归一化及注意力、MLP 残差门。"""
+    def __init__(self, dim, heads):
+        super().__init__()
+        self.norm1 = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
+        self.norm2 = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
+        self.attention = nn.MultiheadAttention(dim, heads, batch_first=True)
+        self.mlp = nn.Sequential(nn.Linear(dim, dim * 4), nn.GELU(), nn.Linear(dim * 4, dim))
+        self.condition = nn.Sequential(nn.SiLU(), nn.Linear(dim, dim * 6))
+        nn.init.zeros_(self.condition[-1].weight)
+        nn.init.zeros_(self.condition[-1].bias)
 
+    def forward(self, x, condition, mask):
+        shift1, scale1, gate1, shift2, scale2, gate2 = self.condition(condition).chunk(6, dim=-1)
+        normalized = self.norm1(x) * (1 + scale1) + shift1
+        x = x + gate1 * self.attention(normalized, normalized, normalized, attn_mask=mask, need_weights=False)[0]
+        return x + gate2 * self.mlp(self.norm2(x) * (1 + scale2) + shift2)
+
+
+class AtlasMini(nn.Module):
+    """学习下一张 RGB 图像的潜变量；四个潜通道均为图像特征，不含深度。"""
     def __init__(self, config: AtlasConfig):
         super().__init__()
         self.config = config
-        if config.image_size % config.patch_size or config.dim % config.heads:
-            raise ValueError("Image size must divide into patches; dim must divide into heads")
-        # 上下文只有 RGB；目标联合建模 RGB 和深度，分别编码后共享 Transformer。
-        self.context_patch = nn.Conv2d(9, config.dim, config.patch_size, config.patch_size)
+        if config.latent_size % config.patch_size or config.dim % config.heads or config.dim % 2:
+            raise ValueError("Latent size must divide into patches; dim must be even and divide into heads")
         self.patch = nn.Conv2d(10, config.dim, config.patch_size, config.patch_size)
-        tokens = (config.image_size // config.patch_size) ** 2
-        self.position = nn.Parameter(torch.randn(1, tokens, config.dim) * 0.02)
+        tokens = (config.latent_size // config.patch_size)**2
+        self.position = nn.Parameter(torch.randn(1, tokens, config.dim) * .02)
         self.kind = nn.Embedding(2, config.dim)
         self.time = nn.Sequential(nn.Linear(config.dim, config.dim), nn.SiLU(), nn.Linear(config.dim, config.dim))
-        block = nn.TransformerEncoderLayer(config.dim, config.heads, config.dim * 4,
-                                           dropout=0., activation="gelu", batch_first=True, norm_first=True)
-        self.transformer = nn.TransformerEncoder(block, config.layers, enable_nested_tensor=False)
-        self.output = nn.Sequential(nn.LayerNorm(config.dim), nn.Linear(config.dim, 4 * config.patch_size**2))
+        self.frame_time = nn.Sequential(nn.Linear(1, config.dim), nn.SiLU(), nn.Linear(config.dim, config.dim))
+        self.blocks = nn.ModuleList([DiTBlock(config.dim, config.heads) for _ in range(config.layers)])
+        self.norm = nn.LayerNorm(config.dim, elementwise_affine=False, eps=1e-6)
+        self.final_condition = nn.Sequential(nn.SiLU(), nn.Linear(config.dim, config.dim * 2))
+        self.output = nn.Linear(config.dim, 4 * config.patch_size**2)
+        nn.init.zeros_(self.output.weight)
+        nn.init.zeros_(self.output.bias)
 
     def time_embedding(self, time):
         half = self.config.dim // 2
@@ -42,49 +61,48 @@ class AtlasMini(nn.Module):
         angle = time[..., None] * frequencies * 1000
         return self.time(torch.cat([angle.sin(), angle.cos()], dim=-1))
 
-    def forward(self, x, t, context, context_rays, target_rays):
-        """x 为 [B,4,H,W]，RGB 历史为 [B,V,3,H,W]，每条射线有 6 个分量。"""
+    def forward(self, x, t, context, context_rays, target_rays, context_times):
         batch, views = context.shape[:2]
-        tokens_per_view = self.position.shape[1]
-        past = torch.cat([context, context_rays], dim=2).flatten(0, 1)
-        past = self.context_patch(past).flatten(2).transpose(1, 2) + self.position
-        # t=1 表示无噪声历史；当前目标则使用实际的流时间 t。
-        past = past + self.kind.weight[0] + self.time_embedding(torch.ones(batch * views, device=x.device))[:, None]
-        past = past.reshape(batch, views * tokens_per_view, -1)
-        target = self.patch(torch.cat([x, target_rays], dim=1)).flatten(2).transpose(1, 2)
-        target = target + self.position + self.kind.weight[1] + self.time_embedding(t)[:, None]
-        length = past.shape[1] + tokens_per_view
-        mask = torch.zeros(length, length, dtype=torch.bool, device=x.device)
-        # 历史不能读取当前目标；当前目标可以读取全部历史。
-        mask[:past.shape[1], past.shape[1]:] = True
-        features = self.transformer(torch.cat([past, target], dim=1), mask=mask)[:, -tokens_per_view:]
-        size = self.config.image_size // self.config.patch_size
-        patches = self.output(features).reshape(batch, size, size, 4, self.config.patch_size, self.config.patch_size)
-        # 交错排列 patch 网格与 patch 内像素，恢复 [B,4,H,W]。
-        return patches.permute(0, 3, 1, 4, 2, 5).reshape_as(x)
+        count = self.position.shape[1]
+        past = self.patch(torch.cat([context, context_rays], dim=2).flatten(0, 1)).flatten(2).transpose(1, 2)
+        past = past.reshape(batch, views, count, -1) + self.position[:, None] + self.kind.weight[0]
+        past = past + self.frame_time(context_times[..., None])[:, :, None]
+        past = past.reshape(batch, views * count, -1)
+        current = self.patch(torch.cat([x, target_rays], dim=1)).flatten(2).transpose(1, 2)
+        current = current + self.position + self.kind.weight[1]
+        current = current + self.frame_time(torch.zeros_like(t[:, None]))[:, None]
+        # 干净历史 t=1，只有当前目标沿噪声到图像潜变量的流路径演化。
+        target_condition = self.time_embedding(t)
+        past_condition = self.time_embedding(torch.ones_like(t))[:, None].expand(-1, views * count, -1)
+        condition = torch.cat([past_condition, target_condition[:, None].expand(-1, count, -1)], dim=1)
+        features = torch.cat([past, current], dim=1)
+        mask = torch.zeros(features.shape[1], features.shape[1], dtype=torch.bool, device=x.device)
+        mask[:views * count, views * count:] = True
+        for block in self.blocks:
+            features = block(features, condition, mask)
+        shift, scale = self.final_condition(target_condition).chunk(2, dim=-1)
+        features = self.norm(features[:, -count:]) * (1 + scale[:, None]) + shift[:, None]
+        size, patch = self.config.latent_size // self.config.patch_size, self.config.patch_size
+        pixels = self.output(features).reshape(batch, size, size, 4, patch, patch)
+        return pixels.permute(0, 3, 1, 4, 2, 5).reshape_as(x)
 
 
 def flow_loss(model, batch, noise=None, time=None):
-    """沿 noise→target 的直线路径，回归恒定速度 target-noise。"""
+    """唯一目标是下一帧图像潜变量的速度；不读取深度或深度掩码。"""
     target = batch["target"]
     noise = torch.randn_like(target) if noise is None else noise
     time = torch.rand(target.shape[0], device=target.device) if time is None else time
-    t = time[:, None, None, None]
-    x = (1 - t) * noise + t * target
-    velocity = model(x, time, batch["context"], batch["context_rays"], batch["target_rays"])
-    # RGB 始终参与监督，缺失或超出量程的深度不计入损失。
-    weights = torch.cat([torch.ones_like(target[:, :3]), batch["valid_depth"]], dim=1)
-    return ((velocity - (target - noise)).square() * weights).sum() / weights.sum().clamp_min(1)
+    x = (1 - time[:, None, None, None]) * noise + time[:, None, None, None] * target
+    velocity = model(x, time, batch["context"], batch["context_rays"], batch["target_rays"], batch["context_times"])
+    return (velocity - (target - noise)).square().mean()
 
 
 @torch.no_grad()
-def sample_flow(model, context, context_rays, target_rays, steps=20, noise=None):
-    """从 t=0 的噪声出发，用 Euler 积分生成 t=1 的 RGBD。"""
+def sample_flow(model, context, context_rays, target_rays, context_times, steps=20, noise=None):
     if steps < 1:
         raise ValueError("Sampling steps must be positive")
-    # 输入 RGB 为 3 通道，生成目标 RGBD 为 4 通道，不能沿用上下文形状。
-    x = context.new_empty(context.shape[0], 4, *context.shape[-2:]).normal_() if noise is None else noise.clone()
+    x = torch.randn_like(context[:, 0]) if noise is None else noise.clone()
     for step in range(steps):
         t = torch.full((x.shape[0],), step / steps, device=x.device)
-        x += model(x, t, context, context_rays, target_rays) / steps
-    return x.clamp(-1, 1)
+        x += model(x, t, context, context_rays, target_rays, context_times) / steps
+    return x

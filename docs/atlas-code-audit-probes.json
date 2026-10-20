@@ -1,0 +1,30 @@
+{
+  "history_permutation_output_max_abs_diff": 3.5762786865234375e-07,
+  "global_translation_same_relative_geometry_output_max_abs_diff": 0.39035722613334656,
+  "rectified_flow_manual_objective_abs_error": 0.0,
+  "decoded_zero_depth_channel_value": 2.3166247903554003,
+  "modules": {
+    "vae": false,
+    "camera_prediction_head": false,
+    "time_or_frame_index_input": false
+  },
+  "scope": "Structural probes on an untrained 8x8, width-32, two-layer model; differences are not trained-model quality metrics.",
+  "reviewed_commit": "8cd12dcc09ee50f6eb92808760c4e2918812551b",
+  "unit_tests": "23 passed in 5.26s",
+  "depth_file_check": {
+    "file": "outputs/replica-rgb-input-check/depth/000000.npy",
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "float32",
+    "finite": true,
+    "range": [
+      0.0,
+      10.0
+    ],
+    "training_steps": 40,
+    "sampling_steps": 4,
+    "quality_assessment": false
+  }
+}

@@ -1,5 +1,6 @@
 # Replica mini v1：数据合成与首轮训练
 
+历史 RGBD 基线记录；当前版本已改为仅用 RGB 预测下一帧，见 [模型说明](../rgb-next-frame.md)。
 本轮采用三个官方 Replica 场景，按场景划分数据；相机机位在原始场景坐标中指定。生成数据位于 `data/rendered/replica_mini_v1/`，不与之前的 `replica_smoke` 混用。
 
 ## 数据配置
