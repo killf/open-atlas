@@ -56,7 +56,7 @@ def evaluate_overfit(output, sampling_steps=20, device="cpu"):
     manifest = json.loads((output / "manifest.json").read_text())
     saved, model = load_checkpoint(checkpoint, device)
     image_size = saved["image_size"]
-    dataset = TrajectoryDataset(output / "data", image_size=image_size)
+    dataset = TrajectoryDataset(output / "data", image_size=image_size, context_frames=saved["context_frames"])
     batch = {k: v.to(device) for k, v in next(iter(DataLoader(dataset, batch_size=len(dataset)))).items()}
     truth = _rgb(batch["target"]).astype(np.float64) / 255
     previous = _rgb(batch["context"][:, -1]).astype(np.float64) / 255

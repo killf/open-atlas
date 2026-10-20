@@ -31,3 +31,26 @@ def test_overfit_rejects_non_training_trajectory(tmp_path):
     source = write_clip(tmp_path, split="val")
     with pytest.raises(ValueError, match="train"):
         overfit(source / "transforms.json", tmp_path / "run", steps=1)
+
+
+def test_independent_evaluation_restores_checkpoint_context(tmp_path, monkeypatch):
+    import open_atlas.overfit as module
+    from open_atlas.train import train
+
+    output = tmp_path / "run"
+    data = output / "data"
+    data.mkdir(parents=True)
+    source = write_clip(data, count=3)
+    metadata = json.loads((source / "transforms.json").read_text())
+    (output / "manifest.json").write_text(json.dumps({"source": str(source), "frames": metadata["frames"]}))
+    train(data, output / "train", steps=1, image_size=8, patch_size=2,
+          dim=16, layers=1, heads=2, context_frames=1)
+    original, counts = module.sample_flow, []
+
+    def observe(model, context, *args, **kwargs):
+        counts.append(context.shape[1])
+        return original(model, context, *args, **kwargs)
+
+    monkeypatch.setattr(module, "sample_flow", observe)
+    module.evaluate_overfit(output, sampling_steps=1)
+    assert counts == [1, 1, 1]
