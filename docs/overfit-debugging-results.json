@@ -1,0 +1,502 @@
+{
+  "confirmed_bug": {
+    "location": "open_atlas.overfit.evaluate_overfit",
+    "problem": "Dataset defaulted to 2 context frames instead of restoring checkpoint context_frames.",
+    "regression": "A real 1-context-frame checkpoint was evaluated with counts [2,2,2] before the fix; [1,1,1] after.",
+    "explains_original_failure": false,
+    "fix_commit": "5555f70"
+  },
+  "final_default_time_sampling": "uniform",
+  "original_metrics": {
+    "checkpoint": "runs/rgb-image-overfit-v1/train/last.pt",
+    "source": "data/rendered/replica_rgb_v2/train_view_0/apartment_0_truck_000/transforms.json",
+    "frames": 8,
+    "targets": 7,
+    "parameterization": "clean_rgb",
+    "training_steps": 1000,
+    "training_seed": 42,
+    "image_size": 64,
+    "sampling_steps": 20,
+    "parameters": 1327920,
+    "model_config": {
+      "image_size": 64,
+      "patch_size": 4,
+      "dim": 128,
+      "layers": 4,
+      "heads": 4
+    },
+    "protocol": "training-set memorization only; one step with real past RGB; seeds 0,1,2; native resolution",
+    "rgb_psnr": 23.688357033752894,
+    "rgb_mae": 0.0406779617228836,
+    "copy_last_rgb_psnr": 25.583689652458673,
+    "per_seed": [
+      {
+        "seed": 0,
+        "rgb_psnr": 23.713449081682747,
+        "rgb_mae": 0.04057758520074696
+      },
+      {
+        "seed": 1,
+        "rgb_psnr": 23.652548244623652,
+        "rgb_mae": 0.04092380441760037
+      },
+      {
+        "seed": 2,
+        "rgb_psnr": 23.69930795047914,
+        "rgb_mae": 0.04053249555030346
+      }
+    ],
+    "passed": false
+  },
+  "logit_normal_experiment": {
+    "run": {
+      "recorded_at": "2026-10-20T13:43:00.655125+00:00",
+      "implementation_commit": "9c0444c076e98fa02361e71fd429bee46181117c",
+      "command": [
+        "python",
+        "-u",
+        "-m",
+        "open_atlas.overfit",
+        "--trajectory",
+        "data/rendered/replica_rgb_v2/train_view_0/apartment_0_truck_000/transforms.json",
+        "--output",
+        "runs/rgb-image-overfit-v2",
+        "--frames",
+        "8",
+        "--steps",
+        "1000",
+        "--image-size",
+        "64",
+        "--sampling-steps",
+        "20",
+        "--seed",
+        "42",
+        "--device",
+        "cpu"
+      ],
+      "source_metadata_sha256": "d1f3d263e2456bc7fc4afb790c78b53922185f08aaa9f7963c4b0b77df6232e6",
+      "subset_metadata_sha256": "4031036c31578fb9932719ee75a366a92659403eda39d9c5547055c178e86dfb",
+      "manifest_sha256": "bf0ea30adb8505c7f3dcad71f5eccbe25c57c7eff032cebfd3cff3779b68d909",
+      "checkpoint_origin": "random initialization; no pretrained weights; not a continuation of v1 or diagnostic probe weights",
+      "depth_used": false,
+      "time_sampling": "logit_normal(-0.8,0.8)",
+      "criteria": {
+        "aggregate_psnr_min_db": 30,
+        "gain_over_copy_previous_min_db": 3
+      },
+      "changes_from_v1": "Default time distribution only; same architecture, RGB loss, optimizer settings, dataset and evaluation. Changing the random draw type also changes later global RNG states, so one seed is not a strictly paired optimization trajectory."
+    },
+    "checkpoint_sha256": "ef80ccaf908de1b668fbb5339bffc6db4e744def54cd8f737508b2fb3ad6ea84",
+    "manifest": {
+      "source": "data/rendered/replica_rgb_v2/train_view_0/apartment_0_truck_000/transforms.json",
+      "frames": [
+        {
+          "source_rgb": "rgb/000000.png",
+          "sha256": "5651333dc5efbd66cbc602e5894456d290e339d26a6985b6d7eb641d800cf0d9"
+        },
+        {
+          "source_rgb": "rgb/000001.png",
+          "sha256": "739ee07b9de1ed9ee1ed62341e3f787dbd354b304ee970aad0ba7a4bd8e840b3"
+        },
+        {
+          "source_rgb": "rgb/000002.png",
+          "sha256": "d947114a65887c9406542ede41e8b63491052aaa5542896b08705ff6c63eb665"
+        },
+        {
+          "source_rgb": "rgb/000003.png",
+          "sha256": "e7263ebe4da3614d0c7bbe29e71f630d1b6eff02fd3c848ac9cb5bd33ee02216"
+        },
+        {
+          "source_rgb": "rgb/000004.png",
+          "sha256": "b1c83c73499062ba905e5d1196b38507fd985bae8d7fc3ba966b5401b33a8786"
+        },
+        {
+          "source_rgb": "rgb/000005.png",
+          "sha256": "54610a1cdaf03f304085d1f5300fff3e122c2d131eeaea1fd6afbc8c6898e4cd"
+        },
+        {
+          "source_rgb": "rgb/000006.png",
+          "sha256": "a081280943ecfe476144b0a986888aefcdf2bb30256731cb47f9c5563bddf686"
+        },
+        {
+          "source_rgb": "rgb/000007.png",
+          "sha256": "2d73a269f8e2f42fafd6bd39da611a188d6276a2011bf798228fea7c3b044efc"
+        }
+      ]
+    },
+    "metrics": {
+      "checkpoint": "runs/rgb-image-overfit-v2/train/last.pt",
+      "source": "data/rendered/replica_rgb_v2/train_view_0/apartment_0_truck_000/transforms.json",
+      "frames": 8,
+      "targets": 7,
+      "parameterization": "clean_rgb",
+      "time_sampling": "logit_normal(-0.8,0.8)",
+      "training_steps": 1000,
+      "training_seed": 42,
+      "image_size": 64,
+      "sampling_steps": 20,
+      "parameters": 1327920,
+      "model_config": {
+        "image_size": 64,
+        "patch_size": 4,
+        "dim": 128,
+        "layers": 4,
+        "heads": 4
+      },
+      "protocol": "training-set memorization only; one step with real past RGB; seeds 0,1,2; native resolution",
+      "rgb_psnr": 23.313927002181266,
+      "rgb_mae": 0.03978024152369281,
+      "copy_last_rgb_psnr": 25.583689652458673,
+      "per_seed": [
+        {
+          "seed": 0,
+          "rgb_psnr": 23.31672576838168,
+          "rgb_mae": 0.03977413230917367
+        },
+        {
+          "seed": 1,
+          "rgb_psnr": 23.310542072811113,
+          "rgb_mae": 0.03979834121148459
+        },
+        {
+          "seed": 2,
+          "rgb_psnr": 23.314515426300918,
+          "rgb_mae": 0.03976825105042017
+        }
+      ],
+      "passed": false
+    },
+    "logged_steps": 1000,
+    "last_flow_loss": 0.015256947837769985,
+    "adopted_as_default": false,
+    "reason": "Fresh 1000-step generation did not improve or meet the original memorization criterion."
+  },
+  "gradient_probe": {
+    "checkpoint": "runs/rgb-image-overfit-v1/train/last.pt",
+    "batch_size": 7,
+    "noise_seed": 17,
+    "gradient_clipping_in_training": 1.0,
+    "measurements": [
+      {
+        "t": 0.0,
+        "loss": 0.00800397526472807,
+        "gradient_norm": 0.09273964911699295,
+        "patch_gradient": 0.031056765466928482,
+        "position_gradient": 0.000858341867569834,
+        "attention_gradient": 0.0033637760207057
+      },
+      {
+        "t": 0.1,
+        "loss": 0.008654609322547913,
+        "gradient_norm": 0.07626527547836304,
+        "patch_gradient": 0.02620915323495865,
+        "position_gradient": 0.000984667451120913,
+        "attention_gradient": 0.003338273148983717
+      },
+      {
+        "t": 0.5,
+        "loss": 0.02008531428873539,
+        "gradient_norm": 0.1996404230594635,
+        "patch_gradient": 0.047787245362997055,
+        "position_gradient": 0.0017341177444905043,
+        "attention_gradient": 0.0030568912625312805
+      },
+      {
+        "t": 0.9,
+        "loss": 0.1939106434583664,
+        "gradient_norm": 7.162301063537598,
+        "patch_gradient": 2.228461980819702,
+        "position_gradient": 0.0321405790746212,
+        "attention_gradient": 0.05903340131044388
+      },
+      {
+        "t": 0.99,
+        "loss": 0.6662775278091431,
+        "gradient_norm": 30.977920532226562,
+        "patch_gradient": 10.06482219696045,
+        "position_gradient": 0.13380353152751923,
+        "attention_gradient": 0.28445249795913696
+      }
+    ]
+  },
+  "short_probes": {
+    "protocol": "Same v1 initial weights; fresh AdamW; full batch of seven; seed42; 150 updates. Every step consumes identical Gaussian noise and uniform time draws. Logit-normal uses inverse normal CDF of those same uniform draws. Scores clamp floats at native64, use noise seed17, no uint8 quantization. Model-sampling scores use20 Euler calls. This is not the formal three-seed evaluation.",
+    "uniform_and_fixed_t0": {
+      "start": {
+        "t0_psnr": 20.9712553024292,
+        "generation_psnr": 23.66976261138916
+      },
+      "cases": {
+        "uniform": [
+          {
+            "step": 50,
+            "loss": 0.04202907159924507,
+            "gradient_norm": 0.6898311376571655,
+            "t0_psnr": 21.372122764587402,
+            "generation_psnr": 24.491589069366455,
+            "elapsed_seconds": 47.22819882499971
+          },
+          {
+            "step": 100,
+            "loss": 0.033970993012189865,
+            "gradient_norm": 0.2504383325576782,
+            "t0_psnr": 21.233341693878174,
+            "generation_psnr": 24.386732578277588,
+            "elapsed_seconds": 91.66501588000028
+          },
+          {
+            "step": 150,
+            "loss": 0.13696244359016418,
+            "gradient_norm": 6.171518325805664,
+            "t0_psnr": 18.005634546279907,
+            "generation_psnr": 24.135053157806396,
+            "elapsed_seconds": 134.44342894500005
+          }
+        ],
+        "fixed_t0": [
+          {
+            "step": 50,
+            "loss": 0.005145925097167492,
+            "gradient_norm": 0.023378944024443626,
+            "t0_psnr": 22.891769409179688,
+            "generation_psnr": 21.641085147857666,
+            "elapsed_seconds": 45.871792971000104
+          },
+          {
+            "step": 100,
+            "loss": 0.004273838363587856,
+            "gradient_norm": 0.006280124187469482,
+            "t0_psnr": 23.68119478225708,
+            "generation_psnr": 21.624321937561035,
+            "elapsed_seconds": 95.19554943200092
+          },
+          {
+            "step": 150,
+            "loss": 0.0035218794364482164,
+            "gradient_norm": 0.008233304135501385,
+            "t0_psnr": 24.513771533966064,
+            "generation_psnr": 21.139273643493652,
+            "elapsed_seconds": 141.24506062799992
+          }
+        ]
+      }
+    },
+    "logit_normal": {
+      "start": {
+        "t0_psnr": 20.9712553024292,
+        "generation_psnr": 23.66976261138916
+      },
+      "cases": {
+        "logit_normal": [
+          {
+            "step": 50,
+            "loss": 0.010891255922615528,
+            "gradient_norm": 0.07975289225578308,
+            "t0_psnr": 22.542896270751953,
+            "generation_psnr": 24.604098796844482,
+            "elapsed_seconds": 48.249400913999125
+          },
+          {
+            "step": 100,
+            "loss": 0.009404046460986137,
+            "gradient_norm": 0.04480801522731781,
+            "t0_psnr": 23.51508378982544,
+            "generation_psnr": 24.76043462753296,
+            "elapsed_seconds": 97.28084064199902
+          },
+          {
+            "step": 150,
+            "loss": 0.012828456237912178,
+            "gradient_norm": 0.10382486134767532,
+            "t0_psnr": 24.17750358581543,
+            "generation_psnr": 24.72517967224121,
+            "elapsed_seconds": 138.88051959299992
+          }
+        ]
+      }
+    },
+    "larger_lr": {
+      "lr": 0.003,
+      "reference_lr": 0.0003,
+      "results": {
+        "start": {
+          "t0_psnr": 20.9712553024292,
+          "generation_psnr": 23.66976261138916
+        },
+        "cases": {
+          "larger_lr": [
+            {
+              "step": 50,
+              "loss": 0.22159069776535034,
+              "gradient_norm": 4.849396228790283,
+              "t0_psnr": 17.445929050445557,
+              "generation_psnr": 21.615219116210938,
+              "elapsed_seconds": 38.14444451300005
+            },
+            {
+              "step": 100,
+              "loss": 0.052237022668123245,
+              "gradient_norm": 0.9599600434303284,
+              "t0_psnr": 17.309356927871704,
+              "generation_psnr": 20.070245265960693,
+              "elapsed_seconds": 79.74533054499989
+            },
+            {
+              "step": 150,
+              "loss": 0.32630887627601624,
+              "gradient_norm": 10.148582458496094,
+              "t0_psnr": 17.09779977798462,
+              "generation_psnr": 23.888938426971436,
+              "elapsed_seconds": 118.74785366799915
+            }
+          ]
+        }
+      }
+    }
+  },
+  "single_real_target_probe": {
+    "protocol": "First real training target only; v1 initial weights, fresh AdamW lr3e-4, batch1, fixed t0, fresh Gaussian training noise;400 updates. Scoring noise seed17; clamped float RGB native64. Does not train the full time interval or all seven targets.",
+    "measurements": [
+      {
+        "step": 100,
+        "t0_psnr": 24.287527084350586,
+        "train_loss": 0.0037541084457188845
+      },
+      {
+        "step": 200,
+        "t0_psnr": 27.501998901367188,
+        "train_loss": 0.0017957203090190887
+      },
+      {
+        "step": 300,
+        "t0_psnr": 30.29473114013672,
+        "train_loss": 0.0009178773616440594
+      },
+      {
+        "step": 400,
+        "t0_psnr": 32.34072494506836,
+        "train_loss": 0.0006259396323002875
+      }
+    ]
+  },
+  "minimal_conditional_task": {
+    "global_seed": 42,
+    "updates": 301,
+    "image_size": 8,
+    "dim": 32,
+    "layers": 1,
+    "heads": 4,
+    "patch_size": 4,
+    "batch_size": 2,
+    "lr": 0.003,
+    "protocol": "Targets are constant0.1 and0.9 RGB images; history repeats each target twice; rays zero; target input independent Gaussian noise at t0. Held-out noise for scoring. The same noise is reused when swapping history. Raw float PSNR, no clipping/quantization.",
+    "psnr": 38.96036148071289,
+    "swapped_history_vs_swapped_target_psnr": 40.14727020263672
+  },
+  "post_experiment_probe": {
+    "protocol": "V2 checkpoint; real past RGB; native64 uint8 scoring; noise seed17. Target RGB is used only to construct noise_slices, not sampling. For ablations target rays remain fixed. Reversal permutes the batch of history conditions, not temporal order within a sample. These probes do not establish generalization or prove complete unconditionality.",
+    "results": {
+      "noise_seed": 17,
+      "sampling": [
+        {
+          "steps": 1,
+          "psnr": 22.645650288764436
+        },
+        {
+          "steps": 5,
+          "psnr": 23.93348976311749
+        },
+        {
+          "steps": 20,
+          "psnr": 23.31106696105781
+        }
+      ],
+      "noise_slices": [
+        {
+          "t": 0.0,
+          "psnr": 22.645650288764436
+        },
+        {
+          "t": 0.1,
+          "psnr": 23.565010511876245
+        },
+        {
+          "t": 0.25,
+          "psnr": 23.761150183364368
+        },
+        {
+          "t": 0.5,
+          "psnr": 24.04471581007548
+        },
+        {
+          "t": 0.75,
+          "psnr": 24.296554452615027
+        },
+        {
+          "t": 0.9,
+          "psnr": 24.094010778162705
+        },
+        {
+          "t": 0.99,
+          "psnr": 23.361945878540062
+        }
+      ],
+      "ablations": [
+        {
+          "condition": "zero_history_rgb",
+          "psnr": 23.15802182492916
+        },
+        {
+          "condition": "reverse_history_rgb",
+          "psnr": 23.311057973851447
+        },
+        {
+          "condition": "reverse_all_history",
+          "psnr": 23.310970599203316
+        }
+      ]
+    }
+  },
+  "conclusion": "Original memorization failure remains unresolved. No deterministic tensor/index/mask/sign fault explaining it was found; weak use of real history is observed. Keep the confirmed evaluation fix, revert the unverified time-distribution change, and do not expand training or claim repair.",
+  "fixed_batch_probe": {
+    "protocol": "V1 initial checkpoint; same seven targets; fixed Gaussian noise seed17 and fixed t=0.5; x_t contains half of target RGB. Fresh AdamW lr3e-4, batch7, gradient clip1, 250 additional updates. Raw float PSNR on the identical training inputs, no clipping/quantization. This is not pure-noise generation and does not pass scheme1.",
+    "measurements": [
+      {
+        "step": 0,
+        "loss": 0.02008531428873539,
+        "raw_train_rgb_psnr": 22.99181365966797,
+        "min_per_target_psnr": 22.467021942138672
+      },
+      {
+        "step": 50,
+        "loss": 0.015049988403916359,
+        "raw_train_rgb_psnr": 24.2452392578125,
+        "min_per_target_psnr": 23.54728889465332
+      },
+      {
+        "step": 100,
+        "loss": 0.010735937394201756,
+        "raw_train_rgb_psnr": 25.712202072143555,
+        "min_per_target_psnr": 24.919742584228516
+      },
+      {
+        "step": 150,
+        "loss": 0.007072215899825096,
+        "raw_train_rgb_psnr": 27.52504539489746,
+        "min_per_target_psnr": 26.500652313232422
+      },
+      {
+        "step": 200,
+        "loss": 0.005314168985933065,
+        "raw_train_rgb_psnr": 28.766246795654297,
+        "min_per_target_psnr": 27.74884033203125
+      },
+      {
+        "step": 250,
+        "loss": 0.0035848943516612053,
+        "raw_train_rgb_psnr": 30.4758358001709,
+        "min_per_target_psnr": 29.381927490234375
+      }
+    ]
+  }
+}
