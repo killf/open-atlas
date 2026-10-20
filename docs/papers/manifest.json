@@ -1,0 +1,22 @@
+[
+  {
+    "file": "cat3d-2405.10314.pdf",
+    "title": "CAT3D: Create Anything in 3D with Multi-View Diffusion Models",
+    "identifier": "arXiv:2405.10314",
+    "source_url": "https://raw.githubusercontent.com/cat3d/cat3d.github.io/7f7893f7d82ec688219fbe8c05469c608a1a8c98/cat3d_v1.pdf",
+    "downloaded_on": "2026-10-20",
+    "bytes": 45215318,
+    "sha256": "4c8213f85471fb22f4cde6aa6db452af8af1cf9679233a0599d182b861ef2bed",
+    "pages": 20
+  },
+  {
+    "file": "blenderproc2-joss.04901.pdf",
+    "title": "BlenderProc2: A Procedural Pipeline for Photorealistic Rendering",
+    "identifier": "doi:10.21105/joss.04901",
+    "source_url": "https://raw.githubusercontent.com/openjournals/joss-papers/2431d4dadd7fb01accbc0317051fa1a2097bbb63/joss.04901/10.21105.joss.04901.pdf",
+    "downloaded_on": "2026-10-20",
+    "bytes": 689095,
+    "sha256": "82b6daab9114c532e8ba05409f37e9e3524d45f039c1d1fd0cc7cdc5036f3abe",
+    "pages": 3
+  }
+]

@@ -1,0 +1,9 @@
+/data/raw/
+/data/rendered/
+/runs/
+/outputs/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/

@@ -1,0 +1,113 @@
+{
+  "mesh": {
+    "bytes": 200778055,
+    "sha256": "274677d9b7caa413230363b68f4aa472e5cc1afe87e422a489fa1b7d844c6182"
+  },
+  "compressed_bytes_read": 5360547840,
+  "blender": "4.3.2",
+  "raw_frames": 48,
+  "clips": [
+    {
+      "trajectory": "compound",
+      "frames": 8,
+      "min_valid_depth_fraction": 1.0,
+      "video": {
+        "width": 64,
+        "height": 64,
+        "r_frame_rate": "12/1",
+        "nb_frames": "8"
+      }
+    },
+    {
+      "trajectory": "crane",
+      "frames": 8,
+      "min_valid_depth_fraction": 0.978759765625,
+      "video": {
+        "width": 64,
+        "height": 64,
+        "r_frame_rate": "12/1",
+        "nb_frames": "8"
+      }
+    },
+    {
+      "trajectory": "dolly",
+      "frames": 8,
+      "min_valid_depth_fraction": 1.0,
+      "video": {
+        "width": 64,
+        "height": 64,
+        "r_frame_rate": "12/1",
+        "nb_frames": "8"
+      }
+    },
+    {
+      "trajectory": "orbit",
+      "frames": 8,
+      "min_valid_depth_fraction": 1.0,
+      "video": {
+        "width": 64,
+        "height": 64,
+        "r_frame_rate": "12/1",
+        "nb_frames": "8"
+      }
+    },
+    {
+      "trajectory": "pan",
+      "frames": 8,
+      "min_valid_depth_fraction": 1.0,
+      "video": {
+        "width": 64,
+        "height": 64,
+        "r_frame_rate": "12/1",
+        "nb_frames": "8"
+      }
+    },
+    {
+      "trajectory": "truck",
+      "frames": 8,
+      "min_valid_depth_fraction": 1.0,
+      "video": {
+        "width": 64,
+        "height": 64,
+        "r_frame_rate": "12/1",
+        "nb_frames": "8"
+      }
+    }
+  ],
+  "training": {
+    "config": {
+      "image_size": 32,
+      "patch_size": 4,
+      "dim": 128,
+      "layers": 4,
+      "heads": 4
+    },
+    "steps": 3000,
+    "parameters": 863680,
+    "training_samples": 42,
+    "first_20_mean_flow_loss": 1.1776048719882966,
+    "last_20_mean_flow_loss": 0.10989945158362388,
+    "sampling_steps": 40
+  },
+  "sample": {
+    "rgb_shape": [
+      7,
+      32,
+      32,
+      3
+    ],
+    "depth_shape": [
+      7,
+      32,
+      32
+    ],
+    "finite_depth": true
+  },
+  "verification": {
+    "pytest_passed": 22,
+    "blender_integration_executed": true,
+    "dependency_check": "passed",
+    "compileall": "passed",
+    "git_diff_check": "passed"
+  }
+}
