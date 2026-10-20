@@ -1,0 +1,112 @@
+{
+  "observed_at": "2026-10-20T10:32:08.268727+00:00",
+  "dataset": "replica_mini_v1",
+  "summary": {
+    "train": {
+      "scenes": [
+        "apartment_0"
+      ],
+      "clips": 48,
+      "frames": 1152,
+      "target_frames": 1104,
+      "minimum_valid_depth_fraction": 1.0,
+      "mean_valid_depth_fraction": 1.0,
+      "minimum_rgb_std": 41.88793580395724
+    },
+    "val": {
+      "scenes": [
+        "apartment_1"
+      ],
+      "clips": 6,
+      "frames": 96,
+      "target_frames": 90,
+      "minimum_valid_depth_fraction": 1.0,
+      "mean_valid_depth_fraction": 1.0,
+      "minimum_rgb_std": 40.5854870474732
+    },
+    "test": {
+      "scenes": [
+        "apartment_2"
+      ],
+      "clips": 6,
+      "frames": 144,
+      "target_frames": 138,
+      "minimum_valid_depth_fraction": 0.93994140625,
+      "mean_valid_depth_fraction": 0.9549441867404513,
+      "minimum_rgb_std": 53.71149378503505
+    }
+  },
+  "dataset_manifest_sha256": "457949475b11b60227aaaef589de0fd9f6dab7e1d09543c1e0465a2c49dd400f",
+  "source_meshes": {
+    "apartment_0": {
+      "bytes": 200778055,
+      "sha256": "274677d9b7caa413230363b68f4aa472e5cc1afe87e422a489fa1b7d844c6182"
+    },
+    "apartment_1": {
+      "bytes": 84015833,
+      "sha256": "3faeca18c360cf0d3b20915fdd2bab7664a6f018f598457c330c172bdca719f5"
+    },
+    "apartment_2": {
+      "bytes": 93969258,
+      "sha256": "fe056811a7d44c764ef5f3417abdfe3b56dc2b5475ac1f51ca696e6bd3e52244"
+    }
+  },
+  "checks": {
+    "rgb_shapes_and_dtypes": true,
+    "finite_nonnegative_depth": true,
+    "camera_inverse_and_rotation": true,
+    "video_resolution_fps_and_frame_counts": true,
+    "scene_disjoint_splits": true,
+    "dataset_tensor_loading": true,
+    "file_sha256_recorded": true
+  },
+  "training_launch": {
+    "started_at": "2026-10-20T10:31:14.698536+00:00",
+    "code_commit": "c2252a6dab709e54edd765795fb860e8ac96d8c3",
+    "command": [
+      "python",
+      "-u",
+      "-m",
+      "open_atlas.train",
+      "--data",
+      "/workspace/open-atlas/data/rendered/replica_mini_v1",
+      "--output",
+      "/workspace/open-atlas/runs/replica-mini-v1",
+      "--steps",
+      "6000",
+      "--image-size",
+      "32",
+      "--patch-size",
+      "4",
+      "--dim",
+      "128",
+      "--layers",
+      "4",
+      "--heads",
+      "4",
+      "--batch-size",
+      "4",
+      "--context-frames",
+      "2",
+      "--max-depth",
+      "10",
+      "--lr",
+      "0.0003",
+      "--seed",
+      "42",
+      "--device",
+      "cpu",
+      "--threads",
+      "2",
+      "--validate"
+    ],
+    "verified_through_step": 493,
+    "latest_logged_validation": {
+      "step": 480,
+      "flow_loss": 0.28219980001449585,
+      "val_flow_loss": 1.1549195128938425
+    },
+    "state_at_observation": "running",
+    "test_used_for_training": false
+  }
+}

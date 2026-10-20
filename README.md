@@ -85,6 +85,8 @@ python -m pytest -q
 
 真实下载、渲染、CPU 训练和采样结果见 [验证记录](docs/validation.md)。数据、权重和生成结果不纳入 Git。
 
+新增三场景数据合成与 6000 步训练的参数、划分和命令见 [Replica mini v1 实验记录](docs/experiments/replica-mini-v1.md)。训练、验证、测试分别使用独立场景，实际数据目录为 `data/rendered/replica_mini_v1/`。
+
 ## 代码约定
 
 项目名统一为 `open-atlas`，Python 导入包为 `open_atlas`。代码保持直接、简洁；注释重点解释算法、张量形状、坐标约定和边界处理，依赖与抽象仅按实际需要引入。
