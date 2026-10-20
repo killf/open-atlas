@@ -4,6 +4,8 @@
 
 ## 公开事实与实现边界
 
+本次补充核对了官方 Beta API、RTFM 与相关作者代码，详见 [一手资料核对](atlas-source-audit.md)。相机控制任务明确使用目标相机；官方服务可先从普通图像估计相机，本项目尚无此输入前端。
+
 主要依据为 [Atlas 官方技术文章](https://www.worldlabs.ai/blog/atlas) Model Architecture 部分、[DiT 论文](https://arxiv.org/abs/2212.09748)第 3 节，以及 [Rectified Flow 论文](https://arxiv.org/abs/2209.03003)。Atlas 未公开完整网络或训练数据配方，以下不是官方实现声明。
 
 | 原文机制 | 当前实现 | 范围与取舍 |
@@ -15,13 +17,13 @@
 | Transformer | 小型 DiT、adaLN-Zero 条件调制 | 块结构参考 DiT，不能断言 Atlas 使用相同配置 |
 | 时空建模能力 | 历史到目标的时间差与扩散时间独立编码 | 只有静态场景与相机运动，不验证物理模拟 |
 
-“下一帧预测”描述的是生成任务；该帧内部仍通过 rectified-flow 多步去噪，并非一次前向直接回归 RGB。官方支持 RGB 输入、深度输出，不意味着其预训练必定仅使用 RGB。RGB-only 是本项目的训练范围。
+“下一帧预测”描述的是生成任务；该帧内部仍通过 rectified-flow 多步去噪，并非一次前向直接回归 RGB。本地直接输出速度是一种参数化选择；Atlas 原文未披露具体预测参数化。[JiT](https://arxiv.org/html/2511.13720v1) 展示了预测干净图像再转换为速度的像素生成路线，当前方案的优化效果仍需对照验证。官方支持 RGB 输入、深度输出，不意味着其预训练必定仅使用 RGB。RGB-only 是本项目的训练范围。
 
 ## 数据与坐标
 
-数据集只索引 `rgb`、`K`、`c2w`、时间与划分字段。每个目标为紧接可见历史之后的一帧，默认从历史中选取第一帧和最近一帧；目标和未来图像不作为条件。训练始终使用干净历史，这仍不是 Diffusion Forcing。
+对外任务为 `历史 RGB + 历史相机 + 目标相机 + 视频时间差 → 下一帧 RGB`，不是无相机条件的视频自动续写。相机条件依据见官方 [How to use Atlas](https://atlas-beta.worldlabs.ai/docs/how-to-use-atlas)。数据集只索引 `rgb`、`K`、`c2w`、时间与划分字段。每个目标为紧接可见历史之后的一帧，默认从历史中选取第一帧和最近一帧；目标和未来图像不作为条件。训练始终使用干净历史，这仍不是 Diffusion Forcing。
 
-相机编码使用 `inverse(T_world_from_first) @ T_world_from_camera`。这一相对坐标选择参考 [CAT3D](papers/cat3d-2405.10314.pdf)第 3.1 节，统一改变世界坐标不会改变输入射线。输出元数据仍保存原始场景相机变换。
+相机编码使用 `inverse(T_world_from_first) @ T_world_from_camera`。这一相对坐标选择参考 [CAT3D](papers/cat3d-2405.10314.pdf)第 3.1 节，统一改变世界坐标不会改变输入射线。输出元数据仍保存原始场景相机变换。CAT3D raymap 记录原点与方向，本项目另采用 CameraCtrl 风格 Plücker moment／方向；两者表示不同，均不能说成 Atlas 已公开的具体相机编码。
 
 沿用 `data/rendered/replica_rgb_v2/`：训练、验证、测试分别使用 apartment_0／apartment_1／apartment_2，60 段视频共 1392 张 RGB，1104／90／138 个目标。当前数据目录没有深度文件或字段，目标图像与历史实验相同。
 
@@ -31,7 +33,7 @@
 
 默认上下文两帧，4 层、128 维、4 个注意力头；输出层直接还原 `[B,3,64,64]` 的像素速度。历史不能注意到加噪目标，目标可使用历史和自身的 patch。采样从三通道高斯噪声开始，Euler 积分结束后才裁剪到 [0,1]，以保持中间流路径不被截断。
 
-生成 RGB 直接反馈到历史，只有开头的参考帧来自真实图像。输出包括 RGB PNG、MP4、相机元数据与 `rgb.npz`。检查点格式为 3，标记 `representation=rgb_pixels`，不包含编解码器。旧潜空间和 RGBD 检查点明确拒绝加载，需在当前实现重新训练。
+生成 RGB 直接反馈到历史，只有开头的参考帧来自真实图像。输出包括 RGB PNG、MP4、相机元数据与 `rgb.npz`。当前只保留两帧历史，未实现多模态统一序列、空间检索或 KV-cache。检查点格式为 3，标记 `representation=rgb_pixels`，不包含编解码器。旧潜空间和 RGBD 检查点明确拒绝加载，需在当前实现重新训练。
 
 ## 验证与实验协议
 
