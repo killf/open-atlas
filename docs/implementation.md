@@ -4,7 +4,9 @@
 
 渲染使用已有 Blender，输出 RGB PNG、相机 Z 深度 NPY、OpenCV 相机内外参和 MP4。Replica 使用专用 PTex 纹理；本轮轻量 Blender 路径明确使用原始网格顶点色近似，并以体素聚类简化几何，不宣称复现官方 PTex 外观。体素大小可设为 0 保留原网格。相机采用小范围平移、旋转及复合轨迹，允许显式指定位置，保存坐标归一化变换。
 
-模型为小型像素空间 RGBD Diffusion Transformer，联合预测 RGB 与深度，以相机 Plücker 射线作为空间条件，采用 rectified flow 速度回归。每次生成一帧，按给定相机序列将已生成 RGBD 加入上下文，形成自回归序列。参考 Atlas 官方技术文章、DiT、Rectified Flow、CameraCtrl 和 Diffusion Forcing；不声称实现未公开的完整 Atlas、文本分支、潜空间 VAE 或三维高斯预测。
+模型以参考 RGB 和相机参数为条件，联合预测 RGB 与深度，采用 rectified flow 速度回归。参考 RGB 与 Plücker 射线共 9 通道，噪声目标 RGBD 与射线共 10 通道，分别编码后共享小型 Transformer。每次生成一帧，将已生成 RGB 加入上下文，形成自回归序列；训练和推理均不读取上下文真值深度。合成深度只用作目标监督和评测标注，推理时所有真值深度及其元数据字段均可省略。
+
+Atlas 官方明确支持 RGB 图像或视频输入并预测几何，但没有公开其完整训练数据配方，不能据此断言官方训练只用 RGB。当前方案是有合成深度监督的 RGB 条件小模型，也仍需要已知相机内外参。参考 Atlas 官方技术文章、DiT、Rectified Flow、CameraCtrl 和 Diffusion Forcing；不声称实现未公开的完整 Atlas、文本分支、潜空间 VAE 或三维高斯预测。
 
 每帧文件及相机参数由 transforms.json 对齐。上下文仅来自目标帧之前；训练、验证、测试以 scene_id 隔离。深度编码、相机坐标、下载恢复和安全解压采用针对性测试；CPU 上以低分辨率完成真实数据训练与采样的冒烟验证，不将其作为质量复现结论。
 

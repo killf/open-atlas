@@ -1,5 +1,7 @@
 # Replica 与精简 Atlas 验证记录
 
+本文保留早期要求 RGBD 参考帧的基线历史，对应旧输入接口。当前实现已改为 RGB 参考帧与相机条件，推理不读取任何真值深度；三场景数据与新训练命令见 [当前实验记录](experiments/replica-mini-v1.md)。下文旧检查点需要重新训练。
+
 验证日期：2026 年 10 月 20 日。环境为 Python 3.12、PyTorch 2.14.1 CPU、Blender 4.3.2 和 FFmpeg，无 CUDA GPU。结构化数据见 [validation-results.json](validation-results.json)。
 
 ## 官方场景下载

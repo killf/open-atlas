@@ -60,7 +60,7 @@
     "dataset_tensor_loading": true,
     "file_sha256_recorded": true
   },
-  "training_launch": {
+  "legacy_training": {
     "started_at": "2026-10-20T10:31:14.698536+00:00",
     "code_commit": "c2252a6dab709e54edd765795fb860e8ac96d8c3",
     "command": [
@@ -107,6 +107,31 @@
       "val_flow_loss": 1.1549195128938425
     },
     "state_at_observation": "running",
-    "test_used_for_training": false
+    "test_used_for_training": false,
+    "final_state": "stopped",
+    "context_modality": "rgbd",
+    "stop_reason": "Ground-truth reference depth is not part of the intended RGB input interface.",
+    "last_step_before_stop": 3392
+  },
+  "input_contract": {
+    "reference": "RGB images and known camera parameters",
+    "training_depth": "target supervision only",
+    "inference_depth": "predicted output; no ground-truth depth is loaded",
+    "pose_estimation_from_unposed_video": false
+  },
+  "rgb_reference_verification": {
+    "unit_tests": 23,
+    "context_channels": 3,
+    "generated_channels": 4,
+    "real_data_smoke_training_steps": 40,
+    "parameters": 882240,
+    "real_inference_input_rgb_frames": 1,
+    "real_inference_camera_frames": 4,
+    "real_inference_ground_truth_depth_files": 0,
+    "real_inference_generated_frames": 3,
+    "real_inference_sampling_steps": 4,
+    "predicted_depth_finite": true,
+    "supervision": "rendered RGB and depth; reference conditions contain RGB only",
+    "quality_assessment": false
   }
 }

@@ -27,20 +27,27 @@ def context_indices(length, count):
     return np.linspace(0, length - 1, count).astype(int) if count > 1 else np.array([length - 1])
 
 
-def load_frame(directory, metadata, frame, image_size, max_depth):
+def load_rgb(directory, metadata, frame, image_size):
+    """读取 RGB 和相机射线；上下文与推理路径不访问任何真值深度。"""
     with Image.open(directory / frame["rgb"]) as image:
         rgb = np.asarray(image.convert("RGB").resize((image_size, image_size), Image.Resampling.BILINEAR), dtype=np.float32)
-    depth = np.load(directory / frame["depth"], allow_pickle=False)
-    # 最近邻缩放避免把无效深度与前后景深度混合。
-    depth = np.asarray(Image.fromarray(depth).resize((image_size, image_size), Image.Resampling.NEAREST))
-    encoded, valid = encode_depth(depth, max_depth)
-    rgbd = np.concatenate([(rgb / 127.5 - 1).transpose(2, 0, 1), encoded[None]], axis=0)
     K = np.array(metadata["K"], dtype=np.float64)
     # 图像尺寸变化时，焦距和主点必须按同样比例缩放。
     K[0] *= image_size / metadata["width"]
     K[1] *= image_size / metadata["height"]
     camera_rays = rays(K, np.array(frame["c2w"]), image_size, image_size)
-    return torch.from_numpy(rgbd), torch.from_numpy(camera_rays), torch.from_numpy(valid[None].astype(np.float32))
+    return torch.from_numpy((rgb / 127.5 - 1).transpose(2, 0, 1)), torch.from_numpy(camera_rays)
+
+
+def load_frame(directory, metadata, frame, image_size, max_depth):
+    """深度只用于目标监督，不作为参考帧条件。"""
+    rgb, camera_rays = load_rgb(directory, metadata, frame, image_size)
+    depth = np.load(directory / frame["depth"], allow_pickle=False)
+    # 最近邻缩放避免把无效深度与前后景深度混合。
+    depth = np.asarray(Image.fromarray(depth).resize((image_size, image_size), Image.Resampling.NEAREST))
+    encoded, valid = encode_depth(depth, max_depth)
+    rgbd = torch.cat([rgb, torch.from_numpy(encoded[None])])
+    return rgbd, camera_rays, torch.from_numpy(valid[None].astype(np.float32))
 
 
 class TrajectoryDataset(Dataset):
@@ -72,7 +79,7 @@ class TrajectoryDataset(Dataset):
         clip, target_id = self.samples[index]
         directory, metadata = self.clips[clip]
         context_ids = context_indices(target_id, self.context_frames)
-        history = [load_frame(directory, metadata, metadata["frames"][int(i)], self.image_size, self.max_depth)
+        history = [load_rgb(directory, metadata, metadata["frames"][int(i)], self.image_size)
                    for i in context_ids]
         target, target_rays, valid = load_frame(directory, metadata, metadata["frames"][target_id],
                                                self.image_size, self.max_depth)
