@@ -1,4 +1,4 @@
-"""Train next-RGB-frame latent generation; depth never enters the training path."""
+"""Train next-frame RGB pixel generation without an image codec or depth supervision."""
 
 import argparse
 from dataclasses import asdict
@@ -8,16 +8,15 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from .codec import ImageCodec
 from .data import TrajectoryDataset
 from .model import AtlasConfig, AtlasMini, flow_loss
 
 
-def train(data, output, steps=1000, image_size=64, patch_size=1, dim=128, layers=4, heads=4,
+def train(data, output, steps=1000, image_size=64, patch_size=4, dim=128, layers=4, heads=4,
           batch_size=4, context_frames=2, lr=3e-4, seed=0, device="cpu", threads=2,
-          validate=False, codec_dir=Path("data/raw/taesd")):
-    if steps < 1 or batch_size < 1 or lr <= 0 or image_size < 8 or image_size % 8:
-        raise ValueError("Need positive steps/batch/lr and image size divisible by 8")
+          validate=False):
+    if steps < 1 or batch_size < 1 or lr <= 0 or image_size < 1:
+        raise ValueError("Need positive steps, batch size, learning rate and image size")
     output = Path(output)
     if (output / "metrics.jsonl").exists() or (output / "last.pt").exists():
         raise ValueError("Choose a fresh training directory")
@@ -25,14 +24,9 @@ def train(data, output, steps=1000, image_size=64, patch_size=1, dim=128, layers
     torch.set_num_threads(threads)
     torch.manual_seed(seed)
     device = torch.device(device)
-    codec = ImageCodec(codec_dir).to(device)
     dataset = TrajectoryDataset(data, image_size=image_size, context_frames=context_frames)
     validation = TrajectoryDataset(data, split="val", image_size=image_size, context_frames=context_frames) if validate else None
-    print("Encoding RGB frames with frozen TAESD; no depth is loaded", flush=True)
-    dataset.cache_latents(codec)
-    if validation is not None:
-        validation.cache_latents(codec)
-    config = AtlasConfig(image_size // 8, patch_size, dim, layers, heads)
+    config = AtlasConfig(image_size, patch_size, dim, layers, heads)
     model = AtlasMini(config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     count = sum(p.numel() for p in model.parameters())
@@ -73,9 +67,8 @@ def train(data, output, steps=1000, image_size=64, patch_size=1, dim=128, layers
             log.write(json.dumps(record) + "\n")
             log.flush()
     checkpoint = output / "last.pt"
-    # 编码器也保存进检查点，推理无需再次下载；其参数不参与优化。
-    torch.save({"format_version": 2, "prediction": "next_rgb", "camera_frame": "first_reference",
-                "config": asdict(config), "model": model.state_dict(), "codec": codec.state_dict(),
+    torch.save({"format_version": 3, "prediction": "next_rgb", "representation": "rgb_pixels",
+                "camera_frame": "first_reference", "config": asdict(config), "model": model.state_dict(),
                 "image_size": image_size, "step": steps, "context_frames": context_frames,
                 "seed": seed, "parameters": count, "training_samples": len(dataset)}, checkpoint)
     return checkpoint
@@ -85,8 +78,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=Path("runs/open-atlas"))
-    parser.add_argument("--codec-dir", type=Path, default=Path("data/raw/taesd"))
-    for name, default in [("steps", 1000), ("image-size", 64), ("patch-size", 1), ("dim", 128),
+    for name, default in [("steps", 1000), ("image-size", 64), ("patch-size", 4), ("dim", 128),
                           ("layers", 4), ("heads", 4), ("batch-size", 4), ("context-frames", 2), ("seed", 0), ("threads", 2)]:
         parser.add_argument(f"--{name}", type=int, default=default)
     parser.add_argument("--lr", type=float, default=3e-4)

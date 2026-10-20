@@ -43,8 +43,8 @@ class TrajectoryDataset(Dataset):
     def __init__(self, root, split="train", image_size=64, context_frames=2):
         if context_frames < 1 or image_size < 1:
             raise ValueError("Image size and context frames must be positive")
-        self.image_size, self.ray_size, self.context_frames = image_size, image_size, context_frames
-        self.clips, self.samples, self.latents = [], [], None
+        self.image_size, self.context_frames = image_size, context_frames
+        self.clips, self.samples = [], []
         scene_splits = {}
         for path in sorted(Path(root).rglob("transforms.json")):
             metadata = json.loads(path.read_text())
@@ -58,19 +58,6 @@ class TrajectoryDataset(Dataset):
         if not self.samples:
             raise ValueError(f"No {split} trajectory samples under {root}")
 
-    @torch.no_grad()
-    def cache_latents(self, codec, batch_size=16):
-        """冻结编码器后，每张 RGB 仅编码一次；缓存中不包含任何深度标注。"""
-        device = next(codec.parameters()).device
-        self.latents = []
-        for directory, metadata in self.clips:
-            frames, encoded = metadata["frames"], []
-            for start in range(0, len(frames), batch_size):
-                rgb = torch.stack([load_image(directory, frame, self.image_size) for frame in frames[start:start + batch_size]])
-                encoded.append(codec.encode(rgb.to(device)).cpu())
-            self.latents.append(torch.cat(encoded))
-        self.ray_size = self.latents[0].shape[-1]
-
     def __len__(self):
         return len(self.samples)
 
@@ -80,9 +67,8 @@ class TrajectoryDataset(Dataset):
         indices = context_indices(target_id, self.context_frames)
         frames = metadata["frames"]
         def image(frame_id):
-            return (self.latents[clip][int(frame_id)] if self.latents is not None
-                    else load_image(directory, frames[int(frame_id)], self.image_size))
+            return load_image(directory, frames[int(frame_id)], self.image_size)
         return {"context": torch.stack([image(i) for i in indices]), "target": image(target_id),
-                "context_rays": torch.stack([camera_rays(metadata, frames[int(i)], self.ray_size) for i in indices]),
-                "target_rays": camera_rays(metadata, frames[target_id], self.ray_size),
+                "context_rays": torch.stack([camera_rays(metadata, frames[int(i)], self.image_size) for i in indices]),
+                "target_rays": camera_rays(metadata, frames[target_id], self.image_size),
                 "context_times": history_times(metadata, target_id, indices)}

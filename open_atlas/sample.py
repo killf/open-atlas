@@ -9,20 +9,18 @@ import numpy as np
 from PIL import Image
 import torch
 
-from .codec import ImageCodec
 from .data import camera_rays, context_indices, history_times, load_image
 from .model import AtlasConfig, AtlasMini, sample_flow
 
 
 def load_checkpoint(checkpoint, device):
     saved = torch.load(checkpoint, map_location="cpu", weights_only=True)
-    if saved.get("format_version") != 2 or saved.get("prediction") != "next_rgb":
-        raise ValueError("Checkpoint is not a next-RGB latent model; retrain with the current code")
+    if (saved.get("format_version") != 3 or saved.get("prediction") != "next_rgb"
+            or saved.get("representation") != "rgb_pixels"):
+        raise ValueError("Checkpoint is not a next-RGB pixel model; retrain with the current code")
     model = AtlasMini(AtlasConfig(**saved["config"])).to(device).eval()
     model.load_state_dict(saved["model"])
-    codec = ImageCodec().to(device)
-    codec.load_state_dict(saved["codec"])
-    return saved, model, codec
+    return saved, model
 
 
 @torch.no_grad()
@@ -30,7 +28,7 @@ def generate(checkpoint, trajectory, output, steps=20, seed=0, reference_frames=
     torch.set_num_threads(2)
     torch.manual_seed(seed)
     device = torch.device(device)
-    saved, model, codec = load_checkpoint(checkpoint, device)
+    saved, model = load_checkpoint(checkpoint, device)
     trajectory, output = Path(trajectory), Path(output)
     metadata = json.loads(trajectory.read_text())
     frames = metadata["frames"]
@@ -39,26 +37,25 @@ def generate(checkpoint, trajectory, output, steps=20, seed=0, reference_frames=
     if output.exists():
         raise ValueError(f"Output already exists: {output}; choose a fresh directory")
     (output / "rgb").mkdir(parents=True)
-    size, latent_size = saved["image_size"], saved["config"]["latent_size"]
+    size = saved["image_size"]
     K = np.array(metadata["K"], dtype=np.float64)
     K[0] *= size / metadata["width"]
     K[1] *= size / metadata["height"]
     history = []
     for frame in frames[:reference_frames]:
-        image = load_image(trajectory.parent, frame, size)[None].to(device)
-        history.append(codec.encode(image)[0])
+        history.append(load_image(trajectory.parent, frame, size).to(device))
     colors, poses, predicted_frames = [], [], []
     for target_id in range(reference_frames, len(frames)):
         frame = frames[target_id]
         indices = context_indices(len(history), saved["context_frames"])
         context = torch.stack([history[i] for i in indices])[None]
-        context_rays = torch.stack([camera_rays(metadata, frames[int(i)], latent_size) for i in indices])[None].to(device)
-        target_rays = camera_rays(metadata, frame, latent_size)[None].to(device)
+        context_rays = torch.stack([camera_rays(metadata, frames[int(i)], size) for i in indices])[None].to(device)
+        target_rays = camera_rays(metadata, frame, size)[None].to(device)
         times = history_times(metadata, target_id, indices)[None].to(device)
-        prediction = sample_flow(model, context, context_rays, target_rays, times, steps)[0]
-        # 自回归上下文使用预测的图像潜变量，不读取目标 RGB，也不重复编解码历史。
+        prediction = sample_flow(model, context, context_rays, target_rays, times, steps)[0].clamp(0, 1)
+        # 积分结束后才裁剪到 RGB 范围；预测像素直接反馈，不读取目标图像。
         history.append(prediction)
-        rgb = codec.decode(prediction[None])[0].cpu().numpy().transpose(1, 2, 0)
+        rgb = prediction.cpu().numpy().transpose(1, 2, 0)
         color = np.rint(rgb * 255).astype(np.uint8)
         index = len(colors)
         Image.fromarray(color).save(output / "rgb" / f"{index:06d}.png")

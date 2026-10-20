@@ -1,4 +1,4 @@
-"""Autoregressive image-latent DiT with camera conditioning and rectified flow."""
+"""Autoregressive RGB-pixel DiT with camera conditioning and rectified flow."""
 
 from dataclasses import dataclass
 import math
@@ -9,8 +9,8 @@ from torch import nn
 
 @dataclass
 class AtlasConfig:
-    latent_size: int = 8
-    patch_size: int = 1
+    image_size: int = 64
+    patch_size: int = 4
     dim: int = 128
     layers: int = 4
     heads: int = 4
@@ -36,14 +36,16 @@ class DiTBlock(nn.Module):
 
 
 class AtlasMini(nn.Module):
-    """学习下一张 RGB 图像的潜变量；四个潜通道均为图像特征，不含深度。"""
+    """直接预测下一帧 RGB 的流速度；patch 投影随模型训练，无独立编解码器。"""
     def __init__(self, config: AtlasConfig):
         super().__init__()
         self.config = config
-        if config.latent_size % config.patch_size or config.dim % config.heads or config.dim % 2:
-            raise ValueError("Latent size must divide into patches; dim must be even and divide into heads")
-        self.patch = nn.Conv2d(10, config.dim, config.patch_size, config.patch_size)
-        tokens = (config.latent_size // config.patch_size)**2
+        if min(config.image_size, config.patch_size, config.dim, config.layers, config.heads) < 1:
+            raise ValueError("Model dimensions must be positive")
+        if config.image_size % config.patch_size or config.dim % config.heads or config.dim % 2:
+            raise ValueError("Image size must divide into patches; dim must be even and divide into heads")
+        self.patch = nn.Conv2d(9, config.dim, config.patch_size, config.patch_size)
+        tokens = (config.image_size // config.patch_size)**2
         self.position = nn.Parameter(torch.randn(1, tokens, config.dim) * .02)
         self.kind = nn.Embedding(2, config.dim)
         self.time = nn.Sequential(nn.Linear(config.dim, config.dim), nn.SiLU(), nn.Linear(config.dim, config.dim))
@@ -51,7 +53,7 @@ class AtlasMini(nn.Module):
         self.blocks = nn.ModuleList([DiTBlock(config.dim, config.heads) for _ in range(config.layers)])
         self.norm = nn.LayerNorm(config.dim, elementwise_affine=False, eps=1e-6)
         self.final_condition = nn.Sequential(nn.SiLU(), nn.Linear(config.dim, config.dim * 2))
-        self.output = nn.Linear(config.dim, 4 * config.patch_size**2)
+        self.output = nn.Linear(config.dim, 3 * config.patch_size**2)
         nn.init.zeros_(self.output.weight)
         nn.init.zeros_(self.output.bias)
 
@@ -71,7 +73,7 @@ class AtlasMini(nn.Module):
         current = self.patch(torch.cat([x, target_rays], dim=1)).flatten(2).transpose(1, 2)
         current = current + self.position + self.kind.weight[1]
         current = current + self.frame_time(torch.zeros_like(t[:, None]))[:, None]
-        # 干净历史 t=1，只有当前目标沿噪声到图像潜变量的流路径演化。
+        # 干净历史 t=1，只有当前目标沿噪声到 RGB 像素的流路径演化。
         target_condition = self.time_embedding(t)
         past_condition = self.time_embedding(torch.ones_like(t))[:, None].expand(-1, views * count, -1)
         condition = torch.cat([past_condition, target_condition[:, None].expand(-1, count, -1)], dim=1)
@@ -82,13 +84,13 @@ class AtlasMini(nn.Module):
             features = block(features, condition, mask)
         shift, scale = self.final_condition(target_condition).chunk(2, dim=-1)
         features = self.norm(features[:, -count:]) * (1 + scale[:, None]) + shift[:, None]
-        size, patch = self.config.latent_size // self.config.patch_size, self.config.patch_size
-        pixels = self.output(features).reshape(batch, size, size, 4, patch, patch)
+        size, patch = self.config.image_size // self.config.patch_size, self.config.patch_size
+        pixels = self.output(features).reshape(batch, size, size, 3, patch, patch)
         return pixels.permute(0, 3, 1, 4, 2, 5).reshape_as(x)
 
 
 def flow_loss(model, batch, noise=None, time=None):
-    """唯一目标是下一帧图像潜变量的速度；不读取深度或深度掩码。"""
+    """仅监督下一帧 RGB 的速度 target - noise，不读取深度。"""
     target = batch["target"]
     noise = torch.randn_like(target) if noise is None else noise
     time = torch.rand(target.shape[0], device=target.device) if time is None else time
