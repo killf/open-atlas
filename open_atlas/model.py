@@ -100,7 +100,8 @@ def flow_loss(model, batch, noise=None, time=None):
     """网络预测干净下一帧，仅在速度空间计算 RGB 损失。"""
     target = batch["target"]
     noise = torch.randn_like(target) if noise is None else noise
-    time = torch.rand(target.shape[0], device=target.device) if time is None else time
+    # 配合图像预测的速度损失，沿用 JiT 时间分布，避免干净端权重主导小批次。
+    time = torch.sigmoid(torch.randn(target.shape[0], device=target.device) * .8 - .8) if time is None else time
     x = (1 - time[:, None, None, None]) * noise + time[:, None, None, None] * target
     prediction = model(x, time, batch["context"], batch["context_rays"], batch["target_rays"], batch["context_times"])
     # 两端使用相同分母；即使接近 t=1，预测等于真值时损失仍为零。

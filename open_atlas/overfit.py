@@ -80,7 +80,8 @@ def evaluate_overfit(output, sampling_steps=20, device="cpu"):
         absolute += float(np.abs(error).sum())
     pixels = truth.size * len(records)
     result = {"checkpoint": str(checkpoint), "source": manifest["source"], "frames": len(manifest["frames"]), "targets": len(dataset),
-              "parameterization": saved["parameterization"], "training_steps": saved["step"], "training_seed": saved["seed"],
+              "parameterization": saved["parameterization"], "time_sampling": saved.get("time_sampling", "uniform"),
+              "training_steps": saved["step"], "training_seed": saved["seed"],
               "image_size": image_size, "sampling_steps": sampling_steps, "parameters": saved["parameters"], "model_config": saved["config"],
               "protocol": "training-set memorization only; one step with real past RGB; seeds 0,1,2; native resolution",
               "rgb_psnr": _psnr(squared, pixels), "rgb_mae": absolute / pixels,
