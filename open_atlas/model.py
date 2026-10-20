@@ -1,4 +1,4 @@
-"""Small RGBD DiT with camera-ray conditioning and a rectified-flow objective."""
+"""Generate RGBD with RGB/camera conditioning and a rectified-flow objective."""
 
 from dataclasses import dataclass
 import math
@@ -17,14 +17,15 @@ class AtlasConfig:
 
 
 class AtlasMini(nn.Module):
-    """将 RGBD 与相机射线编码为 patch token，每次预测一帧的流速度。"""
+    """以 RGB 和相机射线为条件，每次生成一帧 RGB 及预测深度。"""
 
     def __init__(self, config: AtlasConfig):
         super().__init__()
         self.config = config
         if config.image_size % config.patch_size or config.dim % config.heads:
             raise ValueError("Image size must divide into patches; dim must divide into heads")
-        # 4 个 RGBD 通道 + 6 个 Plücker 射线通道，共享同一 patch 编码器。
+        # 上下文只有 RGB；目标联合建模 RGB 和深度，分别编码后共享 Transformer。
+        self.context_patch = nn.Conv2d(9, config.dim, config.patch_size, config.patch_size)
         self.patch = nn.Conv2d(10, config.dim, config.patch_size, config.patch_size)
         tokens = (config.image_size // config.patch_size) ** 2
         self.position = nn.Parameter(torch.randn(1, tokens, config.dim) * 0.02)
@@ -42,11 +43,11 @@ class AtlasMini(nn.Module):
         return self.time(torch.cat([angle.sin(), angle.cos()], dim=-1))
 
     def forward(self, x, t, context, context_rays, target_rays):
-        """x 为 [B,4,H,W]，历史为 [B,V,4,H,W]，每条射线有 6 个分量。"""
+        """x 为 [B,4,H,W]，RGB 历史为 [B,V,3,H,W]，每条射线有 6 个分量。"""
         batch, views = context.shape[:2]
         tokens_per_view = self.position.shape[1]
         past = torch.cat([context, context_rays], dim=2).flatten(0, 1)
-        past = self.patch(past).flatten(2).transpose(1, 2) + self.position
+        past = self.context_patch(past).flatten(2).transpose(1, 2) + self.position
         # t=1 表示无噪声历史；当前目标则使用实际的流时间 t。
         past = past + self.kind.weight[0] + self.time_embedding(torch.ones(batch * views, device=x.device))[:, None]
         past = past.reshape(batch, views * tokens_per_view, -1)
@@ -81,7 +82,8 @@ def sample_flow(model, context, context_rays, target_rays, steps=20, noise=None)
     """从 t=0 的噪声出发，用 Euler 积分生成 t=1 的 RGBD。"""
     if steps < 1:
         raise ValueError("Sampling steps must be positive")
-    x = torch.randn_like(context[:, 0]) if noise is None else noise.clone()
+    # 输入 RGB 为 3 通道，生成目标 RGBD 为 4 通道，不能沿用上下文形状。
+    x = context.new_empty(context.shape[0], 4, *context.shape[-2:]).normal_() if noise is None else noise.clone()
     for step in range(steps):
         t = torch.full((x.shape[0],), step / steps, device=x.device)
         x += model(x, t, context, context_rays, target_rays) / steps

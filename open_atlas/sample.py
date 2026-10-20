@@ -1,4 +1,4 @@
-"""Autoregressive RGBD rollout at specified camera poses; export video and point cloud."""
+"""Generate video and predicted depth from RGB references and target camera poses."""
 
 import argparse
 import json
@@ -9,7 +9,7 @@ import numpy as np
 from PIL import Image
 import torch
 
-from .data import context_indices, decode_depth, load_frame
+from .data import context_indices, decode_depth, load_rgb
 from .geometry import camera_directions, rays
 from .model import AtlasConfig, AtlasMini, sample_flow
 
@@ -36,6 +36,8 @@ def generate(checkpoint, trajectory, output, steps=20, seed=0, reference_frames=
     torch.manual_seed(seed)
     device = torch.device(device)
     saved = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    if saved.get("context_modality") != "rgb":
+        raise ValueError("This checkpoint requires RGBD context; retrain with RGB-only context")
     config = AtlasConfig(**saved["config"])
     model = AtlasMini(config).to(device).eval()
     model.load_state_dict(saved["model"])
@@ -54,8 +56,8 @@ def generate(checkpoint, trajectory, output, steps=20, seed=0, reference_frames=
     K[1] *= size / metadata["height"]
     history = []
     for frame in frames[:reference_frames]:
-        rgbd, ray, _ = load_frame(trajectory.parent, metadata, frame, size, max_depth)
-        history.append((rgbd.to(device), ray.to(device)))
+        rgb, ray = load_rgb(trajectory.parent, metadata, frame, size)
+        history.append((rgb.to(device), ray.to(device)))
     colors, depths, poses, predicted_frames = [], [], [], []
     for index, frame in enumerate(frames[reference_frames:]):
         pose = np.array(frame["c2w"])
@@ -64,8 +66,8 @@ def generate(checkpoint, trajectory, output, steps=20, seed=0, reference_frames=
         context = torch.stack([history[i][0] for i in selected])[None]
         context_rays = torch.stack([history[i][1] for i in selected])[None]
         prediction = sample_flow(model, context, context_rays, target_rays[None], steps)[0]
-        # 后续帧使用生成结果作为历史，不能读取目标 RGBD 真值。
-        history.append((prediction, target_rays))
+        # 后续帧只使用生成的 RGB 作为历史，不读取或依赖任何真值深度。
+        history.append((prediction[:3], target_rays))
         rgbd = prediction.cpu().numpy()
         color = np.clip(np.rint((rgbd[:3].transpose(1, 2, 0) + 1) * 127.5), 0, 255).astype(np.uint8)
         depth = decode_depth(rgbd[3], max_depth).astype(np.float32)
@@ -94,7 +96,7 @@ def generate(checkpoint, trajectory, output, steps=20, seed=0, reference_frames=
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint", type=Path, required=True)
-    parser.add_argument("--trajectory", type=Path, required=True, help="transforms.json with reference RGBD and target cameras")
+    parser.add_argument("--trajectory", type=Path, required=True, help="transforms.json with reference RGB and target cameras")
     parser.add_argument("--output", type=Path, default=Path("outputs/sample"))
     parser.add_argument("--steps", type=int, default=20)
     parser.add_argument("--seed", type=int, default=0)

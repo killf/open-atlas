@@ -1,4 +1,4 @@
-"""Train the compact RGBD model with rectified flow."""
+"""Train RGB-conditioned video and depth generation with rectified flow."""
 
 import argparse
 from dataclasses import asdict
@@ -30,7 +30,7 @@ def train(data, output, steps=1000, image_size=32, patch_size=4, dim=128, layers
     model = AtlasMini(config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     count = sum(p.numel() for p in model.parameters())
-    print(f"Training {count:,} parameters on {len(dataset)} target frames; device={device}", flush=True)
+    print(f"Training {count:,} parameters on {len(dataset)} target frames; context=RGB; output=RGBD; device={device}", flush=True)
     iterator = iter(loader)
     with (output / "metrics.jsonl").open("w") as log:
         for step in range(1, steps + 1):
@@ -65,6 +65,7 @@ def train(data, output, steps=1000, image_size=32, patch_size=4, dim=128, layers
             log.flush()
     checkpoint = output / "last.pt"
     torch.save({"config": asdict(config), "model": model.state_dict(), "step": steps,
+                "context_modality": "rgb", "output_modality": "rgbd",
                 "context_frames": context_frames, "max_depth": max_depth, "seed": seed,
                 "parameters": count, "training_samples": len(dataset)}, checkpoint)
     return checkpoint

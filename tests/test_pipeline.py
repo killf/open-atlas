@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import torch
 
@@ -17,6 +19,7 @@ def test_training_checkpoint_and_autoregressive_rollout(tmp_path):
     saved = torch.load(checkpoint, weights_only=True)
     assert saved["step"] == 2
     assert saved["config"]["image_size"] == 8
+    assert saved["context_modality"] == "rgb"
     output = tmp_path / "generated"
     generate(checkpoint, clip / "transforms.json", output, steps=2, seed=3)
     predictions = np.load(output / "rgbd.npz", allow_pickle=False)
@@ -24,13 +27,21 @@ def test_training_checkpoint_and_autoregressive_rollout(tmp_path):
     assert np.isfinite(predictions["depth"]).all()
     assert (output / "points.ply").is_file()
     first = predictions["rgb"].copy()
-    # Future reference RGBD is supervision only; deleting it must not affect sampling.
+    # 所有真值深度和目标 RGB 都只用于监督，推理只能读取参考 RGB 与相机。
+    first_depth = predictions["depth"].copy()
+    (clip / "0.npy").unlink()
     for i in range(1, 4):
         (clip / f"{i}.png").unlink()
         (clip / f"{i}.npy").unlink()
+    metadata = json.loads((clip / "transforms.json").read_text())
+    for frame in metadata["frames"]:
+        del frame["depth"]
+    (clip / "transforms.json").write_text(json.dumps(metadata))
     generate(checkpoint, clip / "transforms.json", tmp_path / "no_future", steps=2, seed=3)
     second = np.load(tmp_path / "no_future/rgbd.npz", allow_pickle=False)["rgb"]
     np.testing.assert_array_equal(first, second)
+    second_depth = np.load(tmp_path / "no_future/rgbd.npz", allow_pickle=False)["depth"]
+    np.testing.assert_array_equal(first_depth, second_depth)
 
 
 def test_one_frame_context_rollout_consumes_generated_history(tmp_path, monkeypatch):
@@ -46,8 +57,8 @@ def test_one_frame_context_rollout_consumes_generated_history(tmp_path, monkeypa
 
     def known_prediction(model, context, context_rays, target_rays, steps):
         if previous:
-            torch.testing.assert_close(context[:, 0], previous[-1])
-        result = torch.full_like(context[:, 0], .1 * (len(previous) + 1))
+            torch.testing.assert_close(context[:, 0], previous[-1][:, :3])
+        result = context.new_full((context.shape[0], 4, *context.shape[-2:]), .1 * (len(previous) + 1))
         previous.append(result)
         return result
 

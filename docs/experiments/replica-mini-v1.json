@@ -1,0 +1,122 @@
+{
+  "name": "replica_mini_v1",
+  "source": "Replica v1.0 official vertex-colored meshes",
+  "split_policy": "scene-disjoint",
+  "render": {
+    "size": 64,
+    "fps": 12,
+    "fov": 60,
+    "amplitude": 0.08,
+    "voxel_size": 0.025,
+    "up_axis": "z",
+    "trajectories": [
+      "orbit",
+      "dolly",
+      "truck",
+      "crane",
+      "pan",
+      "compound"
+    ]
+  },
+  "splits": {
+    "train": {
+      "scene": "apartment_0",
+      "frames_per_clip": 24,
+      "seeds_per_anchor": 2,
+      "anchors": [
+        {
+          "seed": 0,
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            -1,
+            0
+          ]
+        },
+        {
+          "seed": 10,
+          "position": [
+            -0.35,
+            -0.1,
+            0.1
+          ],
+          "target": [
+            -0.1,
+            -1.3,
+            -0.1
+          ]
+        },
+        {
+          "seed": 20,
+          "position": [
+            0.35,
+            -0.35,
+            -0.1
+          ],
+          "target": [
+            -0.2,
+            -1.4,
+            -0.2
+          ]
+        },
+        {
+          "seed": 30,
+          "position": [
+            0,
+            -0.7,
+            0.25
+          ],
+          "target": [
+            -0.35,
+            -1.8,
+            0
+          ]
+        }
+      ]
+    },
+    "val": {
+      "scene": "apartment_1",
+      "frames_per_clip": 16,
+      "seeds_per_anchor": 1,
+      "anchors": [
+        {
+          "seed": 100,
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            1,
+            0
+          ]
+        }
+      ]
+    },
+    "test": {
+      "scene": "apartment_2",
+      "frames_per_clip": 24,
+      "seeds_per_anchor": 1,
+      "anchors": [
+        {
+          "seed": 200,
+          "position": [
+            5,
+            0.5,
+            -0.1
+          ],
+          "target": [
+            2,
+            0.5,
+            -0.1
+          ]
+        }
+      ]
+    }
+  }
+}

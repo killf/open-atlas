@@ -1,8 +1,10 @@
 # open-atlas
 
-基于 World Labs Atlas 公开技术思路的精简世界模型实验：Replica 三维场景 → 相机轨迹 RGBD 数据 → 相机条件生成 → 自回归视频与点云。
+基于 World Labs Atlas 公开技术思路的精简世界模型实验：Replica 三维场景 → 单目 RGB 轨迹视频与监督标注 → RGB 和相机条件生成 → 视频、预测深度与点云。
 
-这是可运行的小规模实现，尚未复现完整 Atlas 的能力或论文指标。官方未公开完整训练实现；本项目从零训练像素空间 RGBD Transformer，参考 [Atlas 官方文章](https://www.worldlabs.ai/blog/atlas)、[DiT](https://arxiv.org/abs/2212.09748)、[Rectified Flow](https://arxiv.org/abs/2209.03003) 和 [CameraCtrl](https://arxiv.org/abs/2404.02101)。
+这是可运行的小规模实现，尚未复现完整 Atlas 的能力或论文指标。官方未公开完整训练实现；本项目从零训练像素空间 RGB 条件 Transformer，输出 RGB 与预测深度，参考 [Atlas 官方文章](https://www.worldlabs.ai/blog/atlas)、[DiT](https://arxiv.org/abs/2212.09748)、[Rectified Flow](https://arxiv.org/abs/2209.03003) 和 [CameraCtrl](https://arxiv.org/abs/2404.02101)。
+
+**输入为参考 RGB 帧和相机参数，推理不需要真值深度。** 合成深度用于训练目标监督与评测，模型同时输出 RGB 和预测深度。Atlas 官方支持从普通图像或视频预测几何，但未公开仅用 RGB 训练的完整配方。本实现仍需要显式相机内外参，尚未包含从任意 MP4 估计位姿的流程。
 
 ## 安装
 
@@ -51,7 +53,7 @@ Replica 的高分辨率纹理采用专用 PTex；此处 Blender 路径使用**�
 ```text
 apartment_0_truck_000/
   rgb/000000.png       # 无损 RGB；训练读取这些图像
-  depth/000000.npy     # float32 相机 Z 深度，0 表示无效
+  depth/000000.npy     # 训练目标监督与评测标注；推理不读取
   transforms.json     # K、c2w、w2c、时间、场景、split 与坐标约定
   preview.mp4         # 仅用于预览
 ```
@@ -69,9 +71,9 @@ python -m open_atlas.sample --checkpoint runs/open-atlas/last.pt \
   --output outputs/sample --steps 20
 ```
 
-默认骨干为 4 层、128 维的 Transformer。RGB 与对数编码深度联合构成 4 通道，相机 Plücker 射线提供空间条件。训练使用 `x_t = (1-t) * noise + t * target`，回归速度 `target - noise`；采样使用 Euler 积分。过去帧不能关注目标 token，训练上下文只取目标之前的帧。`--context-frames 1` 时使用最近一帧；更多上下文在历史中均匀选取。
+默认骨干为 4 层、128 维的 Transformer。上下文只包含 3 通道 RGB；生成目标为 RGB 与对数编码深度组成的 4 通道，相机 Plücker 射线提供空间条件。两种模态分别编码，再共享 Transformer。训练使用 `x_t = (1-t) * noise + t * target`，回归速度 `target - noise`；采样使用 Euler 积分。过去帧不能关注目标 token，训练上下文只取目标之前的 RGB。`--context-frames 1` 时使用最近一帧；更多上下文在历史中均匀选取。
 
-推理读取开头的参考 RGBD 和后续相机位姿，此后将**生成的 RGBD** 加入历史，不读取目标 RGBD 真值。`transforms.json` 可替换目标相机轨迹；仅参考帧需要可读取的 RGB 和深度文件。输出生成帧、深度、MP4、相机参数和深度反投影点云 `points.ply`。输出目录须为新目录，避免覆盖已有结果。
+推理读取开头的参考 RGB 和后续相机位姿，此后将**生成的 RGB** 加入历史。`transforms.json` 可替换目标相机轨迹；仅参考帧需要可读取的 RGB 文件，所有 `depth` 字段和真值深度文件均可省略。输出生成帧、预测深度、MP4、相机参数和深度反投影点云 `points.ply`。输出目录须为新目录，避免覆盖已有结果。旧版 RGBD 上下文检查点与当前输入编码器不兼容，需要重新训练。
 
 准备了独立场景的 val 数据后，可给训练命令增加 `--validate` 记录验证流损失。单场景短训练只能验证流程及拟合，不能据此评价未见场景泛化。当前不含文本条件、VAE、预训练大模型、物理动态或三维高斯生成；点云由预测深度反投影得到。
 
@@ -83,7 +85,9 @@ python -m pytest -q
 
 测试覆盖分卷拼接、HTTP 中断恢复、安全解压、截断归档与损坏检测、内参缩放、深度编码、场景隔离、单帧与多帧自回归、训练与检查点恢复。安装 Blender 和 FFmpeg 时还会实际渲染平面，核对相机 Z 深度和顶点色。
 
-真实下载、渲染、CPU 训练和采样结果见 [验证记录](docs/validation.md)。数据、权重和生成结果不纳入 Git。
+早期 RGBD 上下文基线的下载、渲染和训练历史见 [验证记录](docs/validation.md)。当前测试包含删除全部真值深度后的 RGB 输入推理检查。数据、权重和生成结果不纳入 Git。
+
+新增三场景数据合成与 6000 步训练的参数、划分和命令见 [Replica mini v1 实验记录](docs/experiments/replica-mini-v1.md)。训练、验证、测试分别使用独立场景，实际数据目录为 `data/rendered/replica_mini_v1/`。
 
 ## 代码约定
 

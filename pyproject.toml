@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "open-atlas"
 version = "0.1.0"
-description = "A compact camera-conditioned RGBD world-model experiment"
+description = "A compact RGB-conditioned world model with predicted geometry"
 requires-python = ">=3.11"
 dependencies = ["numpy>=1.24", "Pillow>=9", "plyfile>=1", "torch>=2.4"]
 

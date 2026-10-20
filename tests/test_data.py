@@ -54,13 +54,25 @@ def test_dataset_uses_only_past_frames_and_scales_intrinsics(tmp_path):
     dataset = TrajectoryDataset(tmp_path, image_size=4, context_frames=2)
     assert len(dataset) == 4
     sample = dataset[2]
-    assert sample["context"].shape == (2, 4, 4, 4)
+    assert sample["context"].shape == (2, 3, 4, 4)
     assert sample["target"].shape == (4, 4, 4)
     # 测试帧灰度随时间递增，直接检查实际上下文没有读到目标或未来图像。
     assert sample["context"][:, :3].max() < sample["target"][:3].min()
     expected = rays(np.array([[4, 0, 2], [0, 4, 2], [0, 0, 1]]), np.eye(4), 4, 4)
     np.testing.assert_allclose(sample["context_rays"][0, :3], expected[:3], atol=1e-6)
     assert torch.isfinite(sample["target"]).all()
+
+
+def test_context_does_not_read_ground_truth_depth(tmp_path):
+    from open_atlas.data import TrajectoryDataset
+
+    clip = write_clip(tmp_path)
+    # 目标为第 3 帧，上下文取第 0、2 帧；只保留目标的深度监督。
+    for index in [0, 1, 2, 4]:
+        (clip / f"{index}.npy").unlink()
+    sample = TrajectoryDataset(tmp_path, image_size=8, context_frames=2)[2]
+    assert sample["context"].shape == (2, 3, 8, 8)
+    assert sample["target"].shape == (4, 8, 8)
 
 
 def test_reject_scene_leakage_across_splits(tmp_path):
