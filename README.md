@@ -62,6 +62,8 @@ python -m open_atlas.evaluate --checkpoint runs/rgb-pixel-next-frame-v1/last.pt 
 
 评测采用单张真实参考图像的自由自回归滚动，报告 RGB PSNR／MAE 和重复首帧基线；默认统一在 32×32 评分，便于与历史实验比较。单场景小模型不能据此宣称 Atlas 级生成质量或泛化能力。
 
+像素版已完成 1000 步训练：独立测试场景自由生成 138 帧，在 32×32 评分下 RGB PSNR 为 **11.84 dB**，仍低于复制首帧基线的 17.00 dB。流程已跑通，生成质量仍不足；完整协议和历史对照见 [实验记录](docs/rgb-next-frame.md)。
+
 ## 验证与文档
 
 ```bash

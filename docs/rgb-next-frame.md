@@ -41,6 +41,19 @@
 
 最终评测每段只给首帧真实 RGB 和相机序列，Euler 20 步自由滚动；独立测试场景共 6 条轨迹、138 帧，统一缩放到 32×32 评分。汇总所有像素误差计算 RGB PSNR／MAE，并报告重复首帧基线。结果不能证明 Atlas 级质量或多场景泛化能力。
 
-新检查点位于 `runs/rgb-pixel-next-frame-v1/last.pt`，训练日志位于同目录 `train.log`；评测输出位于 `outputs/rgb-pixel-next-frame-v1-eval/`。训练和评测结果完成后记录于本文。
+新检查点位于 `runs/rgb-pixel-next-frame-v1/last.pt`，训练日志位于同目录 `train.log`；评测输出位于 `outputs/rgb-pixel-next-frame-v1-eval/`。完整命令、检查点哈希、训练统计和逐轨迹指标见 [结构化记录](rgb-pixel-next-frame-results.json)。
 
 此前 TAESD 潜空间实验保留在 [历史结构化记录](rgb-next-frame-results.json)，其实现对应提交 `ea5e987`，本地检查点仍在 `runs/rgb-next-frame-v1/last.pt`。对应 [TAESD MIT 许可](asset-licenses/TAESD.txt) 为历史权重保留；当前代码无需下载它。
+
+
+## 1000 步实际结果
+
+训练和独立测试评测均已完成。训练最后 20 步平均流损失为 0.1035，最终验证流损失为 0.1186；这些数值属于当前像素表示，不能与历史潜空间损失直接比较。
+
+| 同一 32×32 评分协议，138 个测试目标 | RGB PSNR |
+| --- | ---: |
+| 当前 RGB 像素模型，1000 步 | 11.84 dB |
+| 历史 RGB 潜空间模型，1000 步 | 11.37 dB |
+| 重复首帧基线 | 17.00 dB |
+
+当前 RGB MAE 为 0.1955（范围 [0,1]）。PSNR 略高于历史潜空间实验，但每帧 token 数从 64 增加为 256，编解码器、表示和投影也不同；不能将差异直接归因于移除编码器。结果仍低于复制首帧，未证明有效的新视角生成质量。只有一个训练场景与一个独立测试场景，结论不能推广到一般场景。本轮未根据测试结果继续调参。
