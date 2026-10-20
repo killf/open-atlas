@@ -1,0 +1,187 @@
+{
+  "experiment": "rgb-next-frame-v1",
+  "recorded_at": "2026-10-20T11:32:04.627764+00:00",
+  "code_commit": "ea5e987aea1db4a1fcd5492107b5ad14f3ab53aa",
+  "task": {
+    "target": "next RGB frame in frozen image latent space",
+    "inputs": [
+      "past RGB frames",
+      "relative cameras",
+      "video time gaps"
+    ],
+    "depth_used": false,
+    "depth_prediction": false
+  },
+  "dataset": {
+    "path": "data/rendered/replica_rgb_v2",
+    "manifest_sha256": "5cb875ff75967520f224b8b32854a9b45ac926a4564536598a6ff9dcaccf4947",
+    "summary": {
+      "test": {
+        "scenes": [
+          "apartment_2"
+        ],
+        "clips": 6,
+        "rgb_frames": 144,
+        "targets": 138
+      },
+      "train": {
+        "scenes": [
+          "apartment_0"
+        ],
+        "clips": 48,
+        "rgb_frames": 1152,
+        "targets": 1104
+      },
+      "val": {
+        "scenes": [
+          "apartment_1"
+        ],
+        "clips": 6,
+        "rgb_frames": 96,
+        "targets": 90
+      }
+    },
+    "depth_files": 0,
+    "source_rgb_unchanged": true
+  },
+  "codec": {
+    "name": "TAESD SD1/2",
+    "revision": "d968ebf70e930b76243c773a63162ed94482361f",
+    "frozen": true,
+    "files": {
+      "taesd_encoder.pth": {
+        "bytes": 4912826,
+        "sha256": "15bc6128f0ac51c673d3427216082ebfa62402ffc89763af74edfe259b32d49d",
+        "source": "https://raw.githubusercontent.com/madebyollin/taesd/d968ebf70e930b76243c773a63162ed94482361f/taesd_encoder.pth"
+      },
+      "taesd_decoder.pth": {
+        "bytes": 4913399,
+        "sha256": "02873377c3f4659cd9f9adb2f718dcb434ba4c7bba3af3ee7bb95cbdabe2d3cf",
+        "source": "https://raw.githubusercontent.com/madebyollin/taesd/d968ebf70e930b76243c773a63162ed94482361f/taesd_decoder.pth"
+      },
+      "LICENSE": {
+        "bytes": 1073,
+        "sha256": "261497cf8e9ed613ed1fa5ddf48af32cdf50545b2ccd9edd7eacc91fb9255d6e",
+        "source": "https://raw.githubusercontent.com/madebyollin/taesd/d968ebf70e930b76243c773a63162ed94482361f/LICENSE"
+      }
+    },
+    "matches_author_code_exactly": true,
+    "single_reference_reconstruction_psnr_at_64": 20.803525722873207
+  },
+  "training": {
+    "command": [
+      "python",
+      "-u",
+      "-m",
+      "open_atlas.train",
+      "--data",
+      "data/rendered/replica_rgb_v2",
+      "--output",
+      "/workspace/open-atlas/runs/rgb-next-frame-v1",
+      "--steps",
+      "1000",
+      "--image-size",
+      "64",
+      "--patch-size",
+      "1",
+      "--dim",
+      "128",
+      "--layers",
+      "4",
+      "--heads",
+      "4",
+      "--batch-size",
+      "4",
+      "--context-frames",
+      "2",
+      "--lr",
+      "0.0003",
+      "--seed",
+      "42",
+      "--device",
+      "cpu",
+      "--threads",
+      "2",
+      "--validate"
+    ],
+    "steps": 1000,
+    "parameters": 1280516,
+    "context_frames": 2,
+    "rgb_size": 64,
+    "latent_shape": [
+      4,
+      8,
+      8
+    ],
+    "first20_mean_flow_loss": 1.5238858699798583,
+    "last20_mean_flow_loss": 0.8215860009193421,
+    "last_validation_flow_loss": 1.29926997423172
+  },
+  "evaluation": {
+    "checkpoint": "runs/rgb-next-frame-v1/last.pt",
+    "split": "test",
+    "test_clips": 6,
+    "generated_frames": 138,
+    "metric_size": 32,
+    "sampling_steps": 20,
+    "seed": 0,
+    "protocol": "one reference RGB, known cameras, free autoregressive rollout; no depth loaded",
+    "rgb_psnr": 11.36955648149537,
+    "rgb_mae": 0.2072903623632424,
+    "copy_first_rgb_psnr": 17.001345122966946,
+    "per_clip": [
+      {
+        "clip": "test/apartment_2_compound_200",
+        "generated_frames": 23,
+        "rgb_psnr": 11.30474340903177,
+        "rgb_mae": 0.20860923513427107,
+        "copy_first_rgb_psnr": 21.36193454441417
+      },
+      {
+        "clip": "test/apartment_2_crane_200",
+        "generated_frames": 23,
+        "rgb_psnr": 11.47108680005835,
+        "rgb_mae": 0.20399682971014493,
+        "copy_first_rgb_psnr": 16.529503774821617
+      },
+      {
+        "clip": "test/apartment_2_dolly_200",
+        "generated_frames": 23,
+        "rgb_psnr": 11.361386843304203,
+        "rgb_mae": 0.2071329856670929,
+        "copy_first_rgb_psnr": 17.906725839222666
+      },
+      {
+        "clip": "test/apartment_2_orbit_200",
+        "generated_frames": 23,
+        "rgb_psnr": 11.324007085472356,
+        "rgb_mae": 0.20832184436274506,
+        "copy_first_rgb_psnr": 21.81485624174565
+      },
+      {
+        "clip": "test/apartment_2_pan_200",
+        "generated_frames": 23,
+        "rgb_psnr": 11.46957237998375,
+        "rgb_mae": 0.20417843314862175,
+        "copy_first_rgb_psnr": 14.020767742258805
+      },
+      {
+        "clip": "test/apartment_2_truck_200",
+        "generated_frames": 23,
+        "rgb_psnr": 11.290323458958405,
+        "rgb_mae": 0.21150284615657855,
+        "copy_first_rgb_psnr": 15.569449483504362
+      }
+    ]
+  },
+  "historical_comparison": {
+    "rgbd_pixel_baseline_steps": 6000,
+    "rgbd_pixel_baseline_rgb_psnr_at_32": 11.031905342326365,
+    "matched_training_budget": false
+  },
+  "tests": {
+    "command": "python -m pytest -q",
+    "passed": 27
+  },
+  "interpretation": "RGB-only next-frame pipeline verified; quality remains below the repeated-first-frame baseline. Single held-out scene; architecture/codec/training budget differ from the legacy run."
+}

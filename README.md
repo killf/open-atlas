@@ -74,7 +74,7 @@ python -m pytest -q
 
 测试覆盖无深度训练、下一帧目标与历史隔离、世界坐标变换不变性、冻结图像编码器、流匹配、无未来真值依赖的滚动生成，以及真实 Blender 渲染。
 
-- [模型与原文对照](docs/rgb-next-frame.md)
+- [模型与原文对照、1000 步结果](docs/rgb-next-frame.md)
 - [相关论文](docs/atlas-research.md)与[已提交的 PDF](docs/papers/README.md)
 - [旧版本代码审查](docs/atlas-code-audit.md)：对应旧 RGBD 输出基线，保留作对照
 - [历史数据合成记录](docs/experiments/replica-mini-v1.md)
